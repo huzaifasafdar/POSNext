@@ -1366,7 +1366,7 @@ function handleItemSelected(item, autoAdd = false) {
 	}
 
 	// Check for UOMs
-	if (item.item_uoms && item.item_uoms.length > 0) {
+	if (item.item_uoms && item.item_uoms.length > 1) {
 		cartStore.setPendingItem(item, 1, "uom")
 		uiStore.showItemSelectionDialog = true
 		return
