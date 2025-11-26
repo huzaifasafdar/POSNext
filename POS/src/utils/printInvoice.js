@@ -21,7 +21,7 @@ export async function printInvoice(
 		}
 
 		const doctype = invoiceData.doctype || "Sales Invoice"
-		const format = printFormat || "POS Next Receipt"
+		const format = printFormat || "POS QR Format"
 
 		// Build PDF print URL
 		const params = new URLSearchParams({

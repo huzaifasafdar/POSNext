@@ -197,7 +197,8 @@ export function useInvoice() {
 				item_group: item.item_group,
 				brand: item.brand,
 			}
-			invoiceItems.value.push(newItem)
+			// Instead of push()
+			invoiceItems.value.unshift(newItem)
 			// Recalculate the newly added item to apply taxes
 			recalculateItem(newItem)
 

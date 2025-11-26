@@ -363,7 +363,8 @@
 							<div class="flex items-start justify-between gap-1 mb-1">
 								<div class="flex items-center gap-1.5 flex-1 min-w-0">
 									<h4 class="text-[11px] sm:text-xs font-bold text-gray-900 truncate leading-tight">
-										{{ item.item_name }}
+										{{ item.item_name }} 
+										<span class="text-green-600">({{ item.item_code }})</span>
 									</h4>
 									<!-- Free Item Badge -->
 									<span
