@@ -592,13 +592,17 @@ const changeAmount = computed(() => {
 })
 
 const canComplete = computed(() => {
-	// If partial payment is allowed, can complete with any amount > 0
-	if (props.allowPartialPayment) {
-		return totalPaid.value > 0 && paymentEntries.value.length > 0
-	}
-	// Otherwise require full payment
-	return totalPaid.value >= props.grandTotal && paymentEntries.value.length > 0
+  if (props.allowPartialPayment) {
+    return totalPaid.value > 0 && paymentEntries.value.length > 0
+  }
+
+  const EPS = 0.005 // half cent for currencies with 2 decimals
+  return (
+    (totalPaid.value + EPS) >= props.grandTotal &&
+    paymentEntries.value.length > 0
+  )
 })
+
 
 const paymentButtonText = computed(() => {
 	console.log('[PaymentDialog] Button text calculation:', {
