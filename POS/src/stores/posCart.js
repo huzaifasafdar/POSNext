@@ -598,6 +598,8 @@ export const usePOSCartStore = defineStore("posCart", () => {
 				throw new Error("Item not found in cart")
 			}
 
+			const isManualRateItem = cartItem.item_code === "1"
+			
 			// If UOM changed, fetch new rate from server
 			if (updatedDetails.uom && updatedDetails.uom !== cartItem.uom) {
 				try {
@@ -651,6 +653,17 @@ export const usePOSCartStore = defineStore("posCart", () => {
 				cartItem.price_list_rate = updatedDetails.price_list_rate
 			}
 
+			if (updatedDetails.rate !== undefined && isManualRateItem) {
+				// Treat this as the final rate
+				cartItem.rate = updatedDetails.rate
+
+				// Optional but recommended:
+				// keep price_list_rate in sync so recalculateItem doesn't overwrite it
+				cartItem.price_list_rate = updatedDetails.rate
+
+				// Mark that this item has a manually set rate
+				cartItem.manual_rate = true
+			}
 			// Recalculate item totals (this will compute the correct rate from price_list_rate and discount)
 			recalculateItem(cartItem)
 

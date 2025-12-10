@@ -88,14 +88,21 @@
 								<span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm font-medium">
 									{{ currencySymbol }}
 								</span>
-								<input
-									v-model.number="localRate"
-									type="number"
-									min="0"
-									step="0.01"
-									readonly
-									class="w-full h-10 border border-gray-300 rounded-lg pl-16 pr-3 text-sm font-semibold bg-gray-50 cursor-not-allowed"
-								/>
+		<input
+			v-model.number="localRate"
+			type="number"
+			min="0"
+			step="0.01"
+			@input="handleRateChange"   
+			@blur="handleRateBlur"
+			:readonly="localItem?.item_code !== '1'"
+			:class="[
+				'w-full h-10 border border-gray-300 rounded-lg pl-16 pr-3 text-sm font-semibold',
+				localItem?.item_code === '1'
+					? 'bg-white cursor-text'
+					: 'bg-gray-50 cursor-not-allowed'
+			]"
+		/>
 							</div>
 						</div>
 					</div>
@@ -424,7 +431,23 @@ function handleDiscountTypeChange() {
 	discountValue.value = 0
 	calculateTotals()
 }
+function handleRateChange() {
+	// Allow user to type; just keep it non-negative
+	if (localRate.value < 0 || isNaN(localRate.value)) {
+		localRate.value = 0
+	}
+	calculateTotals() // ✅ updates subtotal, discount, total
+}
 
+function handleRateBlur() {
+	// Optional: normalize the rate (e.g. 2 decimals)
+	if (!localRate.value || isNaN(localRate.value)) {
+		localRate.value = 0
+	} else {
+		localRate.value = Math.round(localRate.value * 100) / 100
+	}
+	calculateTotals()
+}
 function calculateDiscount() {
 	if (discountType.value === "percentage") {
 		// Ensure percentage doesn't exceed 100
