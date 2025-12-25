@@ -257,7 +257,7 @@ const localQuantity = ref(1)
 const localUom = ref("")
 const localRate = ref(0)
 const localWarehouse = ref("")
-const discountType = ref("percentage")
+const discountType = ref("amount")
 const discountValue = ref(0)
 const calculatedSubtotal = ref(0)
 const calculatedDiscount = ref(0)
@@ -299,7 +299,7 @@ watch(
 				discountType.value = "amount"
 				discountValue.value = newItem.discount_amount
 			} else {
-				discountType.value = "percentage"
+				discountType.value = "amount"
 				discountValue.value = 0
 			}
 
