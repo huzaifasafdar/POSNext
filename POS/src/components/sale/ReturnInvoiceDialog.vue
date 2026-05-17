@@ -18,7 +18,6 @@
 							type="text"
 							placeholder="Search by invoice number or customer name..."
 							class="w-full"
-							@input="onSearchInput"
 						/>
 					</div>
 
@@ -350,11 +349,14 @@ const errorDialog = reactive({
 const loadInvoicesResource = createResource({
 	url: "pos_next.api.invoices.get_returnable_invoices",
 	makeParams() {
-		return {
+		const params = {
 			limit: PAGE_SIZE,
 			start: invoiceListStart.value,
-			search: invoiceListFilter.value || null,
 		}
+		if (invoiceListFilter.value) {
+			params.search = invoiceListFilter.value
+		}
+		return params
 	},
 	auto: false,
 	onSuccess(data) {
@@ -664,13 +666,13 @@ function loadMore() {
 	loadInvoicesResource.fetch()
 }
 
-function onSearchInput() {
+watch(invoiceListFilter, () => {
 	clearTimeout(searchDebounceTimer)
 	searchDebounceTimer = setTimeout(() => {
 		invoiceListStart.value = 0
 		loadInvoicesResource.fetch()
 	}, 350)
-}
+})
 
 function selectInvoiceFromList(invoice) {
 	// Fetch the full invoice details with return tracking
