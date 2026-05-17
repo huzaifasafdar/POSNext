@@ -1526,9 +1526,10 @@ async function handlePaymentCompleted(paymentData) {
 				// Refresh stock - Direct API (50-200ms), no Socket.IO lag!
 				await stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
 
-				if (shiftStore.autoPrintEnabled) {
+				if (shiftStore.autoPrintEnabled || settingsStore.silentPrint) {
 					try {
-						await handlePrintInvoice({ name: invoiceName })
+						const useIframe = settingsStore.silentPrint
+						await printInvoiceByName(invoiceName, null, null, useIframe)
 						showSuccess(`Invoice ${invoiceName} created and sent to printer`)
 					} catch (error) {
 						log.error("Auto-print error:", error)

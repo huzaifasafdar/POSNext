@@ -1052,6 +1052,11 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 	const shouldAutoAdd =
 		forceAutoAdd || (scannerEnabled.value && autoAddEnabled.value)
 
+	// Capture before the await — scannerInputDetected is reset synchronously
+	// in handleKeyDown right after this function is called, so by the time the
+	// await resolves the flag will already be false.
+	const isScannerInput = scannerInputDetected.value
+
 	try {
 		// First try exact barcode lookup via API
 		const item = await itemStore.searchByBarcode(barcode)
@@ -1066,11 +1071,15 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 		console.error("Barcode API error:", error)
 	}
 
-	// Fallback: If only one item matches in filtered results, auto-select it
-	if (filteredItems.value.length === 1) {
+	// When input came from a barcode scanner, filteredItems may be stale:
+	// the 300ms search debounce hasn't fired yet so searchResults still holds
+	// results from the previous scan. Trusting that stale list is what causes
+	// a previously-scanned item to get its quantity bumped. Skip the fallback
+	// and treat the API miss as definitive "not found".
+	if (!isScannerInput && filteredItems.value.length === 1) {
 		emit("item-selected", filteredItems.value[0], shouldAutoAdd)
 		itemStore.clearSearch()
-	} else if (filteredItems.value.length === 0) {
+	} else if (filteredItems.value.length === 0 || isScannerInput) {
 		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
 
 		// If scanner mode is enabled, clear search immediately for next scan

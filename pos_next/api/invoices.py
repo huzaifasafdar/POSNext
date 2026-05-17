@@ -909,12 +909,17 @@ def cleanup_old_drafts(pos_profile=None, max_age_hours=24):
 
 
 @frappe.whitelist()
-def get_returnable_invoices(limit=50):
+def get_returnable_invoices(limit=20, start=0, search=None):
     """Get list of invoices that have items available for return."""
-    # Performance: Use SQL aggregation to calculate returned quantities in one query
-    # This eliminates N+1 queries by joining return invoices and aggregating in the database
+    search_condition = ""
+    params = []
 
-    query = """
+    if search:
+        search_condition = "AND (si.name LIKE %s OR si.customer_name LIKE %s)"
+        like = f"%{search}%"
+        params = [like, like]
+
+    query = f"""
         SELECT
             si.name,
             si.customer,
@@ -934,15 +939,15 @@ def get_returnable_invoices(limit=50):
         WHERE si.docstatus = 1
             AND si.is_return = 0
             AND si.is_pos = 1
+            {search_condition}
         GROUP BY si.name
         HAVING total_original_qty > total_returned_qty
         ORDER BY si.posting_date DESC, si.creation DESC
-        LIMIT %s
+        LIMIT %s OFFSET %s
     """
 
-    returnable_invoices = frappe.db.sql(query, [cint(limit)], as_dict=1)
-
-    return returnable_invoices
+    params += [cint(limit), cint(start)]
+    return frappe.db.sql(query, params, as_dict=1)
 
 
 @frappe.whitelist()

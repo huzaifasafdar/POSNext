@@ -8,12 +8,13 @@ const log = logger.create('PrintInvoice')
  * @param {Object} invoiceData - The invoice document data
  * @param {string} printFormat - The print format name (optional)
  * @param {string} letterhead - The letterhead name (optional)
- * @note Use "POS Next Receipt" format for thermal printer (80mm) or configure via POS Profile
+ * @param {boolean} useIframe - Use hidden iframe instead of popup (for thermal/silent print)
  */
 export async function printInvoice(
 	invoiceData,
 	printFormat = null,
 	letterhead = null,
+	useIframe = false,
 ) {
 	try {
 		if (!invoiceData || !invoiceData.name) {
@@ -23,7 +24,6 @@ export async function printInvoice(
 		const doctype = invoiceData.doctype || "Sales Invoice"
 		const format = printFormat || "POS QR Format"
 
-		// Build PDF print URL
 		const params = new URLSearchParams({
 			doctype: doctype,
 			name: invoiceData.name,
@@ -31,29 +31,48 @@ export async function printInvoice(
 			no_letterhead: letterhead ? 0 : 1,
 			_lang: "en",
 			trigger_print: 1,
-			_t: Date.now(), // Cache buster to force fresh print format
+			_t: Date.now(),
 		})
 
 		if (letterhead) {
 			params.append("letterhead", letterhead)
 		}
 
-		// Open PDF in new window - browser will handle print dialog
 		const printUrl = `/printview?${params.toString()}`
+
+		if (useIframe) {
+			// Hidden iframe: trigger_print=1 in Frappe's printview auto-calls window.print().
+			// Combine with Chrome --kiosk-printing for truly silent output to thermal printer.
+			return printViaIframe(printUrl)
+		}
+
 		const printWindow = window.open(printUrl, "_blank", "width=800,height=600")
 
 		if (!printWindow) {
-			throw new Error(
-				"Failed to open print window. Please check your popup blocker settings.",
-			)
+			log.warn("Popup blocked — falling back to iframe print")
+			return printViaIframe(printUrl)
 		}
 
 		return true
 	} catch (error) {
 		log.error("Error printing with Frappe print format:", error)
-		// Fallback to custom print format
 		return printInvoiceCustom(invoiceData)
 	}
+}
+
+function printViaIframe(printUrl) {
+	const iframe = document.createElement("iframe")
+	iframe.style.cssText = "position:fixed;right:-9999px;bottom:-9999px;width:1px;height:1px;border:none;"
+	iframe.src = printUrl
+	document.body.appendChild(iframe)
+	iframe.addEventListener("load", () => {
+		// Frappe's trigger_print=1 will auto-call window.print() inside the iframe.
+		// Remove the iframe after a generous delay to allow the print job to spool.
+		setTimeout(() => {
+			if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		}, 30000)
+	})
+	return true
 }
 
 /**
@@ -454,9 +473,9 @@ export async function printInvoiceByName(
 	invoiceName,
 	printFormat = null,
 	letterhead = null,
+	useIframe = false,
 ) {
 	try {
-		// Fetch the invoice document using proper POS API endpoint
 		const invoiceDoc = await call("pos_next.api.invoices.get_invoice", {
 			invoice_name: invoiceName,
 		})
@@ -465,7 +484,6 @@ export async function printInvoiceByName(
 			throw new Error("Invoice not found")
 		}
 
-		// If no print format specified and invoice has a POS Profile, fetch its print settings
 		if (!printFormat && invoiceDoc.pos_profile) {
 			try {
 				const posProfileDoc = await call("frappe.client.get", {
@@ -479,12 +497,10 @@ export async function printInvoiceByName(
 				}
 			} catch (error) {
 				log.warn("Could not fetch POS Profile print settings:", error)
-				// Continue with default print format
 			}
 		}
 
-		// Print the invoice
-		return await printInvoice(invoiceDoc, printFormat, letterhead)
+		return await printInvoice(invoiceDoc, printFormat, letterhead, useIframe)
 	} catch (error) {
 		log.error("Error fetching invoice for print:", error)
 		throw error

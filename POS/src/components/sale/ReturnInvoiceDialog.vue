@@ -18,11 +18,12 @@
 							type="text"
 							placeholder="Search by invoice number or customer name..."
 							class="w-full"
+							@input="onSearchInput"
 						/>
 					</div>
 
-					<!-- Loading State -->
-					<div v-if="loadInvoicesResource.loading" class="text-center py-8">
+					<!-- Loading State (initial) -->
+					<div v-if="loadInvoicesResource.loading && invoiceList.length === 0" class="text-center py-8">
 						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
 						<p class="mt-2 text-xs text-gray-500">Loading invoices...</p>
 					</div>
@@ -30,7 +31,7 @@
 					<!-- Invoice List -->
 					<div v-else class="max-h-80 overflow-y-auto space-y-2 pr-2">
 						<div
-							v-for="invoice in filteredInvoiceList"
+							v-for="invoice in invoiceList"
 							:key="invoice.name"
 							@click="selectInvoiceFromList(invoice)"
 							class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-all"
@@ -49,7 +50,19 @@
 								</div>
 							</div>
 						</div>
-						<p v-if="!loadInvoicesResource.loading && filteredInvoiceList.length === 0" class="text-center py-8 text-gray-500 text-sm">
+
+						<!-- Load More -->
+						<div v-if="hasMore" class="text-center pt-2">
+							<Button
+								variant="subtle"
+								:loading="loadInvoicesResource.loading"
+								@click="loadMore"
+							>
+								Load More
+							</Button>
+						</div>
+
+						<p v-if="!loadInvoicesResource.loading && invoiceList.length === 0" class="text-center py-8 text-gray-500 text-sm">
 							No invoices found
 						</p>
 					</div>
@@ -313,6 +326,8 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "return-created"])
 
+const PAGE_SIZE = 20
+
 const show = ref(props.modelValue)
 const originalInvoice = ref(null)
 const returnItems = ref([])
@@ -321,27 +336,35 @@ const refundPaymentMethod = ref("")
 const paymentMethods = ref([])
 const invoiceList = ref([])
 const invoiceListFilter = ref("")
+const invoiceListStart = ref(0)
+const hasMore = ref(false)
 const submitError = ref("")
 const isSubmitting = ref(false)
+let searchDebounceTimer = null
 const errorDialog = reactive({
 	visible: false,
 	title: "Validation Error",
 	message: "",
 })
 
-// Resource for loading recent invoices (only those with items available for return)
 const loadInvoicesResource = createResource({
 	url: "pos_next.api.invoices.get_returnable_invoices",
 	makeParams() {
 		return {
-			limit: 50,
+			limit: PAGE_SIZE,
+			start: invoiceListStart.value,
+			search: invoiceListFilter.value || null,
 		}
 	},
 	auto: false,
 	onSuccess(data) {
-		if (data) {
-			invoiceList.value = data
+		const results = data || []
+		if (invoiceListStart.value === 0) {
+			invoiceList.value = results
+		} else {
+			invoiceList.value = [...invoiceList.value, ...results]
 		}
+		hasMore.value = results.length === PAGE_SIZE
 	},
 	onError(error) {
 		console.error("Error loading invoices:", error)
@@ -483,7 +506,8 @@ const createReturnResource = createResource({
 		emit("return-created", data)
 
 		// Reload the invoice list to remove fully returned invoices
-		loadInvoicesResource.reload()
+		invoiceListStart.value = 0
+		loadInvoicesResource.fetch()
 
 		resetForm()
 		show.value = false
@@ -511,8 +535,9 @@ watch(
 	(val) => {
 		show.value = val
 		if (val) {
-			// Auto-load invoices when dialog opens
-			loadInvoicesResource.reload()
+			invoiceListStart.value = 0
+			invoiceListFilter.value = ""
+			loadInvoicesResource.fetch()
 		} else {
 			resetForm()
 		}
@@ -543,16 +568,6 @@ const canCreateReturn = computed(() => {
 	return selectedItems.value.length > 0 && refundPaymentMethod.value !== ""
 })
 
-const filteredInvoiceList = computed(() => {
-	if (!invoiceListFilter.value) return invoiceList.value
-
-	const filter = invoiceListFilter.value.toLowerCase()
-	return invoiceList.value.filter(
-		(invoice) =>
-			invoice.name.toLowerCase().includes(filter) ||
-			invoice.customer_name.toLowerCase().includes(filter),
-	)
-})
 
 // Methods
 function extractErrorMessage(
@@ -644,6 +659,19 @@ function validateSelectedItems() {
 	return false
 }
 
+function loadMore() {
+	invoiceListStart.value += PAGE_SIZE
+	loadInvoicesResource.fetch()
+}
+
+function onSearchInput() {
+	clearTimeout(searchDebounceTimer)
+	searchDebounceTimer = setTimeout(() => {
+		invoiceListStart.value = 0
+		loadInvoicesResource.fetch()
+	}, 350)
+}
+
 function selectInvoiceFromList(invoice) {
 	// Fetch the full invoice details with return tracking
 	submitError.value = ""
@@ -723,6 +751,9 @@ function resetForm() {
 	refundPaymentMethod.value = ""
 	invoiceList.value = []
 	invoiceListFilter.value = ""
+	invoiceListStart.value = 0
+	hasMore.value = false
+	clearTimeout(searchDebounceTimer)
 	submitError.value = ""
 	isSubmitting.value = false
 	errorDialog.visible = false
