@@ -50,20 +50,20 @@
 							</div>
 						</div>
 
-						<!-- Load More -->
-						<div v-if="hasMore" class="text-center pt-2">
-							<Button
-								variant="subtle"
-								:loading="loadInvoicesResource.loading"
-								@click="loadMore"
-							>
-								Load More
-							</Button>
-						</div>
-
 						<p v-if="!loadInvoicesResource.loading && invoiceList.length === 0" class="text-center py-8 text-gray-500 text-sm">
 							No invoices found
 						</p>
+					</div>
+
+					<!-- Load More (outside scrollable area so it's always visible) -->
+					<div v-if="hasMore" class="text-center pt-2">
+						<Button
+							variant="subtle"
+							:loading="loadInvoicesResource.loading"
+							@click="loadMore"
+						>
+							Load More
+						</Button>
 					</div>
 				</div>
 

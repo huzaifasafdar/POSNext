@@ -121,8 +121,8 @@
 				</div>
 
 				<!-- Load More -->
-				<div v-if="hasMore && !invoicesResource.loading" class="text-center">
-					<Button variant="subtle" @click="loadMore">
+				<div v-if="hasMore" class="text-center">
+					<Button variant="subtle" :loading="invoicesResource.loading" @click="loadMore">
 						Load More
 					</Button>
 				</div>
@@ -155,9 +155,9 @@ const emit = defineEmits(["update:modelValue", "create-return", "view-invoice", 
 const show = ref(props.modelValue)
 const invoices = ref([])
 const searchTerm = ref("")
-const page = ref(0)
+const start = ref(0)
 const pageSize = 20
-const hasMore = ref(true)
+const hasMore = ref(false)
 
 // Create resource for loading invoices
 const invoicesResource = createResource({
@@ -181,20 +181,19 @@ const invoicesResource = createResource({
 				"is_return",
 			],
 			order_by: "creation desc",
-			start: 0,
-			page_length: 100,
+			limit_start: start.value,
+			limit_page_length: pageSize,
 		}
 	},
 	auto: false,
 	onSuccess(data) {
-		console.log("Invoices loaded:", data)
-		if (data && Array.isArray(data)) {
-			// For simplicity, show item count as 0 initially
-			invoices.value = data.map((inv) => ({
-				...inv,
-				items_count: 0,
-			}))
+		const results = (data || []).map((inv) => ({ ...inv, items_count: 0 }))
+		if (start.value === 0) {
+			invoices.value = results
+		} else {
+			invoices.value = [...invoices.value, ...results]
 		}
+		hasMore.value = results.length === pageSize
 	},
 	onError(error) {
 		console.error("Error loading invoices:", error)
@@ -207,7 +206,7 @@ watch(
 	(val) => {
 		show.value = val
 		if (val && props.posProfile) {
-			invoicesResource.reload()
+			loadInvoices()
 		}
 	},
 )
@@ -229,13 +228,15 @@ const filteredInvoices = computed(() => {
 
 function loadInvoices() {
 	if (props.posProfile) {
+		start.value = 0
+		invoices.value = []
 		invoicesResource.reload()
 	}
 }
 
 function loadMore() {
-	page.value++
-	loadInvoices(true)
+	start.value += pageSize
+	invoicesResource.reload()
 }
 
 function searchInvoices() {
