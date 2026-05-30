@@ -1068,7 +1068,16 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 			return
 		}
 	} catch (error) {
-		console.error("Barcode API error:", error)
+		// API error means "not found" (frappe.throw sends HTTP 417).
+		// Must return here — falling through to the filteredItems check below
+		// risks using stale results from the previous scan (the 300ms debounce
+		// may have fired during the slow production API call and populated
+		// filteredItems with the previous item, causing qty to increment).
+		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+		if (shouldAutoAdd) {
+			itemStore.clearSearch()
+		}
+		return
 	}
 
 	// When input came from a barcode scanner, filteredItems may be stale:

@@ -603,15 +603,7 @@ const canComplete = computed(() => {
   )
 })
 
-
 const paymentButtonText = computed(() => {
-	console.log('[PaymentDialog] Button text calculation:', {
-		totalPaid: totalPaid.value,
-		grandTotal: props.grandTotal,
-		allowPartialPayment: props.allowPartialPayment,
-		canComplete: canComplete.value
-	})
-
 	if (totalPaid.value >= props.grandTotal) {
 		return "Complete Payment"
 	}
@@ -809,18 +801,7 @@ function clearAll() {
 }
 
 function completePayment() {
-	console.log('[PaymentDialog] Complete payment called:', {
-		canComplete: canComplete.value,
-		totalPaid: totalPaid.value,
-		grandTotal: props.grandTotal,
-		allowPartialPayment: props.allowPartialPayment,
-		paymentEntries: paymentEntries.value
-	})
-
-	if (!canComplete.value) {
-		console.warn('[PaymentDialog] Cannot complete - validation failed')
-		return
-	}
+	if (!canComplete.value) return
 
 	const isPartial = totalPaid.value < props.grandTotal
 
@@ -832,10 +813,7 @@ function completePayment() {
 		outstanding_amount: isPartial ? remainingAmount.value : 0,
 	}
 
-	console.log('[PaymentDialog] Emitting payment-completed:', paymentData)
-
 	emit("payment-completed", paymentData)
-
 	show.value = false
 }
 

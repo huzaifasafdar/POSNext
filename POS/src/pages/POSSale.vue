@@ -1504,12 +1504,9 @@ async function handlePaymentCompleted(paymentData) {
 			uiStore.showSuccess(`OFFLINE-${Date.now()}`, cartStore.grandTotal)
 			uiStore.showPaymentDialog = false
 			cartStore.clearCart()
-			// Reset cart hash after successful payment
 			previousCartHash = ""
-
 			showWarning("Invoice saved and will sync when online")
 		} else {
-			// Get item codes from cart before clearing
 			const soldItemCodes = cartStore.invoiceItems.map(item => item.item_code)
 
 			const result = await cartStore.submitInvoice()
@@ -1520,11 +1517,10 @@ async function handlePaymentCompleted(paymentData) {
 
 				uiStore.showPaymentDialog = false
 				cartStore.clearCart()
-				// Reset cart hash after successful payment
 				previousCartHash = ""
 
-				// Refresh stock - Direct API (50-200ms), no Socket.IO lag!
-				await stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
+				// Refresh stock in background — don't block the receipt/print
+				stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
 
 				if (shiftStore.autoPrintEnabled || settingsStore.silentPrint) {
 					try {
