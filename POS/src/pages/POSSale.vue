@@ -693,7 +693,7 @@ import { session } from "@/data/session"
 import { useUserData } from "@/data/user"
 import { parseError } from "@/utils/errorHandler"
 import { offlineWorker } from "@/utils/offline/workerClient"
-import { printInvoice, printInvoiceByName } from "@/utils/printInvoice"
+import { openPrintView, printInvoice, printInvoiceByName } from "@/utils/printInvoice"
 import { Button, Dialog, createResource } from "frappe-ui"
 import { call } from "@/utils/apiWrapper"
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
@@ -1522,18 +1522,16 @@ async function handlePaymentCompleted(paymentData) {
 				// Refresh stock in background — don't block the receipt/print
 				stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
 
-				if (shiftStore.autoPrintEnabled || settingsStore.silentPrint) {
-					try {
-						const useIframe = settingsStore.silentPrint
-						await printInvoiceByName(invoiceName, null, null, useIframe)
-						showSuccess(`Invoice ${invoiceName} created and sent to printer`)
-					} catch (error) {
-						log.error("Auto-print error:", error)
-						showWarning(`Invoice ${invoiceName} created but print failed`)
+				try {
+					openPrintView(invoiceName, "POS QR Format", null, paymentData.print_window)
+					showSuccess(`Invoice ${invoiceName} created and sent to printer`)
+				} catch (error) {
+					log.error("Auto-print error:", error)
+					if (paymentData.print_window && !paymentData.print_window.closed) {
+						paymentData.print_window.close()
 					}
-				} else {
 					uiStore.showSuccess(invoiceName, invoiceTotal)
-					showSuccess(`Invoice ${invoiceName} created successfully`)
+					showWarning(`Invoice ${invoiceName} created but print failed`)
 				}
 			}
 		}

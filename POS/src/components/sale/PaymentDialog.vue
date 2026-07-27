@@ -777,6 +777,7 @@ function addCreditAccountPayment() {
 		is_credit_sale: true,  // Mark as credit sale
 		paid_amount: 0,
 		outstanding_amount: props.grandTotal,
+		print_window: reservePrintWindow(),
 	}
 
 	console.log('[PaymentDialog] Emitting credit sale payment-completed:', paymentData)
@@ -811,10 +812,37 @@ function completePayment() {
 		is_partial_payment: isPartial,
 		paid_amount: totalPaid.value,
 		outstanding_amount: isPartial ? remainingAmount.value : 0,
+		print_window: reservePrintWindow(),
 	}
 
 	emit("payment-completed", paymentData)
 	show.value = false
+}
+
+function reservePrintWindow() {
+	const printWindow = window.open("", "_blank", "width=800,height=600")
+	if (!printWindow) return null
+
+	printWindow.document.write(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Preparing Receipt</title>
+			<style>
+				body {
+					font-family: Arial, sans-serif;
+					margin: 40px;
+					color: #111827;
+				}
+			</style>
+		</head>
+		<body>
+			<h3>Preparing receipt...</h3>
+		</body>
+		</html>
+	`)
+	printWindow.document.close()
+	return printWindow
 }
 
 function formatCurrency(amount) {

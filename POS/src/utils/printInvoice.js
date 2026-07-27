@@ -3,18 +3,59 @@ import { logger } from "@/utils/logger"
 
 const log = logger.create('PrintInvoice')
 
+export function openPrintView(
+	invoiceName,
+	printFormat = "POS QR Format",
+	letterhead = null,
+	reservedWindow = null,
+) {
+	if (!invoiceName) {
+		throw new Error("Invalid invoice name")
+	}
+
+	const params = new URLSearchParams({
+		doctype: "Sales Invoice",
+		name: invoiceName,
+		format: printFormat,
+		no_letterhead: letterhead ? 0 : 1,
+		_lang: "en",
+		trigger_print: 1,
+		_t: Date.now(),
+	})
+
+	if (letterhead) {
+		params.append("letterhead", letterhead)
+	}
+
+	const printUrl = `/printview?${params.toString()}`
+
+	if (reservedWindow && !reservedWindow.closed) {
+		reservedWindow.location.replace(printUrl)
+		reservedWindow.focus()
+		return true
+	}
+
+	const printWindow = window.open(printUrl, "_blank", "width=800,height=600")
+	if (!printWindow) {
+		return printViaIframe(printUrl)
+	}
+	return true
+}
+
 /**
  * Print invoice using Frappe's print format system
  * @param {Object} invoiceData - The invoice document data
  * @param {string} printFormat - The print format name (optional)
  * @param {string} letterhead - The letterhead name (optional)
  * @param {boolean} useIframe - Use hidden iframe instead of popup (for thermal/silent print)
+ * @param {Window} reservedWindow - Window opened during the user's click event
  */
 export async function printInvoice(
 	invoiceData,
 	printFormat = null,
 	letterhead = null,
 	useIframe = false,
+	reservedWindow = null,
 ) {
 	try {
 		if (!invoiceData || !invoiceData.name) {
@@ -39,6 +80,12 @@ export async function printInvoice(
 		}
 
 		const printUrl = `/printview?${params.toString()}`
+
+		if (reservedWindow && !reservedWindow.closed) {
+			reservedWindow.location.href = printUrl
+			reservedWindow.focus()
+			return true
+		}
 
 		if (useIframe) {
 			// Hidden iframe: trigger_print=1 in Frappe's printview auto-calls window.print().
@@ -474,6 +521,7 @@ export async function printInvoiceByName(
 	printFormat = null,
 	letterhead = null,
 	useIframe = false,
+	reservedWindow = null,
 ) {
 	try {
 		const invoiceDoc = await call("pos_next.api.invoices.get_invoice", {
@@ -500,7 +548,7 @@ export async function printInvoiceByName(
 			}
 		}
 
-		return await printInvoice(invoiceDoc, printFormat, letterhead, useIframe)
+		return await printInvoice(invoiceDoc, printFormat, letterhead, useIframe, reservedWindow)
 	} catch (error) {
 		log.error("Error fetching invoice for print:", error)
 		throw error
