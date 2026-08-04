@@ -435,8 +435,11 @@
 			:currency="shiftStore.profileCurrency"
 			:history-invoices="invoiceHistoryData"
 			:draft-invoices="draftsStore.drafts"
+			:last-invoice-name="uiStore.lastInvoiceName"
+			:printing-last-invoice="isPrintingLastInvoice"
 			@view-invoice="handleViewInvoice"
 			@print-invoice="handlePrintInvoice"
+			@print-last-invoice="handlePrintLastInvoice"
 			@load-draft="handleLoadDraftFromManagement"
 			@delete-draft="handleDeleteDraft"
 			@refresh-history="loadInvoiceHistoryData"
@@ -693,10 +696,10 @@ import { session } from "@/data/session"
 import { useUserData } from "@/data/user"
 import { parseError } from "@/utils/errorHandler"
 import { offlineWorker } from "@/utils/offline/workerClient"
-import { openPrintView, printInvoice, printInvoiceByName } from "@/utils/printInvoice"
+import { preloadPrintView, printPreloadedPrintViewFast, printPreloadedPrintViewWhenReady, printInvoice, printInvoiceByName } from "@/utils/printInvoice"
 import { Button, Dialog, createResource } from "frappe-ui"
 import { call } from "@/utils/apiWrapper"
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useToast } from "@/composables/useToast"
 
 import { useItemSearchStore } from "@/stores/itemSearch"
@@ -742,6 +745,10 @@ const offersDialogRef = ref(null)
 const containerRef = ref(null)
 const dividerRef = ref(null)
 const pendingPaymentAfterCustomer = ref(false)
+const draftPreparePromise = ref(null)
+const draftAutoPrepareTimer = ref(null)
+const draftPrepareInFlight = ref(false)
+const draftPrepareQueued = ref(false)
 const logoutAfterClose = ref(false)
 const showClearCacheDialog = ref(false)
 const clearCacheOverlayRef = ref(null)
@@ -762,6 +769,57 @@ function computeCartHash() {
 		.join("|")
 }
 
+function clearDraftPrepareTimer() {
+	if (draftAutoPrepareTimer.value) {
+		clearTimeout(draftAutoPrepareTimer.value)
+		draftAutoPrepareTimer.value = null
+	}
+}
+
+function startDraftReceiptPreparation() {
+	if (offlineStore.isOffline || cartStore.isEmpty) return null
+
+	const customerValue = cartStore.customer?.name || cartStore.customer || shiftStore.profileCustomer
+	if (!customerValue) return null
+	if (draftPrepareInFlight.value) {
+		draftPrepareQueued.value = true
+		return draftPreparePromise.value
+	}
+
+	draftPrepareQueued.value = false
+	draftPrepareInFlight.value = true
+	draftPreparePromise.value = cartStore.saveDraft()
+		.then((draftInvoice) => {
+			if (draftInvoice?.name) {
+				preloadPrintView(draftInvoice.name, "POS QR Format")
+			}
+			return draftInvoice
+		})
+		.catch((error) => {
+			draftPreparePromise.value = null
+			log.error("Error preparing invoice draft:", error)
+			return null
+		})
+		.finally(() => {
+			draftPrepareInFlight.value = false
+			if (draftPrepareQueued.value && !cartStore.isEmpty) {
+				startDraftReceiptPreparation()
+			}
+		})
+
+	return draftPreparePromise.value
+}
+
+function scheduleDraftReceiptPreparation(delay = 75) {
+	clearDraftPrepareTimer()
+	if (offlineStore.isOffline || cartStore.isEmpty) return
+
+	draftAutoPrepareTimer.value = setTimeout(() => {
+		draftAutoPrepareTimer.value = null
+		startDraftReceiptPreparation()
+	}, delay)
+}
+
 // Promotion dialog
 const showPromotionManagement = ref(false)
 
@@ -770,6 +828,7 @@ const showPOSSettings = ref(false)
 
 // Invoice Management dialog
 const showInvoiceManagement = ref(false)
+const isPrintingLastInvoice = ref(false)
 
 // Invoice Detail dialog
 const showInvoiceDetail = ref(false)
@@ -1089,6 +1148,18 @@ watch(
 		}
 	},
 	{ deep: true },
+)
+
+watch(
+	[
+		() => computeCartHash(),
+		() => cartStore.customer?.name || cartStore.customer,
+		() => shiftStore.profileCustomer,
+	],
+	() => {
+		scheduleDraftReceiptPreparation()
+	},
+	{ flush: "post" },
 )
 
 // Watch for applied offers changes - handle when offers are added/removed
@@ -1423,7 +1494,7 @@ function handleCreateCustomer(searchValue) {
 	uiStore.showCreateCustomerDialog = true
 }
 
-function handleProceedToPayment() {
+async function handleProceedToPayment() {
 	if (cartStore.isEmpty) {
 		showWarning("Please add items to cart before proceeding to payment")
 		return
@@ -1435,6 +1506,11 @@ function handleProceedToPayment() {
 		uiStore.showCustomerDialog = true
 		pendingPaymentAfterCustomer.value = true
 		return
+	}
+
+	clearDraftPrepareTimer()
+	if (!cartStore.draftInvoice?.name) {
+		startDraftReceiptPreparation()
 	}
 
 	uiStore.showPaymentDialog = true
@@ -1504,36 +1580,59 @@ async function handlePaymentCompleted(paymentData) {
 			uiStore.showSuccess(`OFFLINE-${Date.now()}`, cartStore.grandTotal)
 			uiStore.showPaymentDialog = false
 			cartStore.clearCart()
+			clearDraftPrepareTimer()
+			draftPreparePromise.value = null
+			draftPrepareQueued.value = false
 			previousCartHash = ""
 			showWarning("Invoice saved and will sync when online")
 		} else {
 			const soldItemCodes = cartStore.invoiceItems.map(item => item.item_code)
-
-			const result = await cartStore.submitInvoice()
-
-			if (result) {
-				const invoiceName = result.name || result.message?.name || "Unknown"
-				const invoiceTotal = result.grand_total || result.total || 0
-
-				uiStore.showPaymentDialog = false
-				cartStore.clearCart()
-				previousCartHash = ""
-
-				// Refresh stock in background — don't block the receipt/print
-				stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
-
+			if (!cartStore.draftInvoice?.name && draftPreparePromise.value) {
 				try {
-					openPrintView(invoiceName, "POS QR Format", null, paymentData.print_window)
-					showSuccess(`Invoice ${invoiceName} created and sent to printer`)
+					await draftPreparePromise.value
 				} catch (error) {
-					log.error("Auto-print error:", error)
-					if (paymentData.print_window && !paymentData.print_window.closed) {
-						paymentData.print_window.close()
-					}
-					uiStore.showSuccess(invoiceName, invoiceTotal)
-					showWarning(`Invoice ${invoiceName} created but print failed`)
+					const errorContext = parseError(error)
+					uiStore.showError(
+						errorContext.title || "Error",
+						errorContext.message || "Unable to prepare invoice",
+						errorContext.technicalDetails || null,
+					)
+					return
 				}
 			}
+
+			const submitPromise = cartStore.submitInvoice()
+
+			uiStore.showPaymentDialog = false
+			cartStore.clearCart()
+			clearDraftPrepareTimer()
+			draftPreparePromise.value = null
+			draftPrepareQueued.value = false
+			previousCartHash = ""
+
+			submitPromise.then((result) => {
+				if (!result) return
+				const invoiceName = result.name || result.message?.name || "Unknown"
+				const invoiceTotal = result.grand_total || result.total || 0
+				uiStore.lastInvoiceName = invoiceName
+				uiStore.lastInvoiceTotal = invoiceTotal
+				preloadPrintView(invoiceName, "POS QR Format")
+				showSuccess(`Invoice ${invoiceName} created`)
+
+			}).catch((error) => {
+				log.error("Background invoice submit error:", error)
+				const errorContext = parseError(error)
+				uiStore.showError(
+					errorContext.title || "Invoice Submit Error",
+					errorContext.message || "Invoice submit failed",
+					errorContext.technicalDetails || null,
+					errorContext.retryable ? "payment" : null,
+				)
+			})
+
+			setTimeout(() => {
+				stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
+			}, 0)
 		}
 	} catch (error) {
 		log.error("Error submitting invoice:", error)
@@ -1564,6 +1663,9 @@ function handleClearCart() {
 
 function confirmClearCart() {
 	cartStore.clearCart()
+	clearDraftPrepareTimer()
+	draftPreparePromise.value = null
+	draftPrepareQueued.value = false
 	// Reset cart hash when cart is cleared
 	previousCartHash = ""
 	uiStore.showClearCartDialog = false
@@ -2025,6 +2127,9 @@ function handleManagementMenuClick(menuItem) {
 	} else if (menuItem === "invoices") {
 		// Load invoice history data before showing
 		loadInvoiceHistoryData()
+		if (uiStore.lastInvoiceName) {
+			preloadPrintView(uiStore.lastInvoiceName, "POS QR Format")
+		}
 		showInvoiceManagement.value = true
 	}
 }
@@ -2073,6 +2178,49 @@ async function handlePrintInvoice(invoiceData) {
 			indicator: "red",
 		})
 	}
+}
+
+async function handlePrintLastInvoice() {
+	const invoiceName = uiStore.lastInvoiceName
+	if (!invoiceName) {
+		showWarning("No last invoice found")
+		return
+	}
+
+	isPrintingLastInvoice.value = true
+	await nextTick()
+
+	try {
+		const waitForPrint = waitForPrintCompletion()
+		if (!printPreloadedPrintViewFast(invoiceName, "POS QR Format")) {
+			await printPreloadedPrintViewWhenReady(invoiceName, "POS QR Format")
+		}
+		await waitForPrint
+	} catch (error) {
+		log.error("Error printing last invoice:", error)
+		window.frappe?.msgprint({
+			title: "Error",
+			message: "Failed to print last invoice",
+			indicator: "red",
+		})
+	} finally {
+		isPrintingLastInvoice.value = false
+	}
+}
+
+function waitForPrintCompletion() {
+	return new Promise((resolve) => {
+		let resolved = false
+		const finish = () => {
+			if (resolved) return
+			resolved = true
+			window.removeEventListener("afterprint", finish)
+			resolve()
+		}
+
+		window.addEventListener("afterprint", finish, { once: true })
+		setTimeout(finish, 1500)
+	})
 }
 
 // Note: handleLoadDraft already exists above, will delegate to it

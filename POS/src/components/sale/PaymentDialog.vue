@@ -777,7 +777,7 @@ function addCreditAccountPayment() {
 		is_credit_sale: true,  // Mark as credit sale
 		paid_amount: 0,
 		outstanding_amount: props.grandTotal,
-		print_window: reservePrintWindow(),
+		print_window: null,
 	}
 
 	console.log('[PaymentDialog] Emitting credit sale payment-completed:', paymentData)
@@ -812,7 +812,7 @@ function completePayment() {
 		is_partial_payment: isPartial,
 		paid_amount: totalPaid.value,
 		outstanding_amount: isPartial ? remainingAmount.value : 0,
-		print_window: reservePrintWindow(),
+		print_window: null,
 	}
 
 	emit("payment-completed", paymentData)
@@ -827,7 +827,7 @@ function reservePrintWindow() {
 		<!DOCTYPE html>
 		<html>
 		<head>
-			<title>Preparing Receipt</title>
+			<title>Receipt</title>
 			<style>
 				body {
 					font-family: Arial, sans-serif;
@@ -836,9 +836,7 @@ function reservePrintWindow() {
 				}
 			</style>
 		</head>
-		<body>
-			<h3>Preparing receipt...</h3>
-		</body>
+		<body></body>
 		</html>
 	`)
 	printWindow.document.close()

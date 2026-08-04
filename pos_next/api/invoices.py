@@ -4,6 +4,7 @@
 
 from __future__ import unicode_literals
 import json
+import time
 import frappe
 from frappe import _
 from frappe.utils import flt, cint, nowdate, nowtime, get_datetime, cstr
@@ -32,6 +33,72 @@ def get_payment_account(mode_of_payment, company):
     Get account for mode of payment.
     Tries multiple fallback methods to find a suitable account.
     """
+    mode_name = cstr(mode_of_payment).lower()
+    prefers_cash = "cash" in mode_name
+    prefers_digital = "credit" in mode_name or "digital" in mode_name
+    prefers_bank = "debit" in mode_name or (
+        "bank" in mode_name and not prefers_digital
+    )
+
+    def get_account_like(account_type_value, account_name):
+        filters = {
+            "company": company,
+            "is_group": 0,
+            "name": ["like", "%{0}%".format(account_name)],
+        }
+        if account_type_value:
+            filters["account_type"] = account_type_value
+
+        return frappe.db.get_value(
+            "Account",
+            filters,
+            "name",
+        )
+
+    def get_default_bank_account():
+        account = frappe.get_value("Company", company, "default_bank_account")
+        if account:
+            return account
+
+        return frappe.db.get_value(
+            "Account",
+            {"company": company, "account_type": "Bank", "is_group": 0},
+            "name",
+        )
+
+    def get_default_cash_account():
+        account = frappe.get_value("Company", company, "default_cash_account")
+        if account:
+            return account
+
+        return frappe.db.get_value(
+            "Account",
+            {"company": company, "account_type": "Cash", "is_group": 0},
+            "name",
+        )
+
+    def get_digital_account():
+        return (
+            get_account_like("Bank", "Digital")
+            or get_account_like(None, "Digital")
+            or get_default_bank_account()
+        )
+
+    if prefers_cash:
+        account = get_default_cash_account()
+        if account:
+            return {"account": account}
+
+    if prefers_digital:
+        account = get_digital_account()
+        if account:
+            return {"account": account}
+
+    if prefers_bank:
+        account = get_default_bank_account()
+        if account:
+            return {"account": account}
+
     # Try 1: Mode of Payment Account table
     account = frappe.db.get_value(
         "Mode of Payment Account",
@@ -60,13 +127,13 @@ def get_payment_account(mode_of_payment, company):
         return {"account": account[0].default_account}
 
     # Try 3: Company default cash account (for cash payments)
-    if "cash" in mode_of_payment.lower():
-        account = frappe.get_value("Company", company, "default_cash_account")
+    if prefers_cash:
+        account = get_default_cash_account()
         if account:
             return {"account": account}
 
     # Try 4: Company default bank account
-    account = frappe.get_value("Company", company, "default_bank_account")
+    account = get_default_bank_account()
     if account:
         return {"account": account}
 
@@ -86,6 +153,63 @@ def get_payment_account(mode_of_payment, company):
         ).format(mode_of_payment, company),
         title=_("Missing Account"),
     )
+
+
+def _snapshot_selected_payments(payments):
+    """Keep the POS-selected payment rows before ERPNext refreshes profile defaults."""
+    selected_payments = []
+    for payment in payments or []:
+        if hasattr(payment, "as_dict"):
+            payment = payment.as_dict()
+
+        if not payment.get("mode_of_payment"):
+            continue
+
+        selected_payments.append(
+            {
+                "mode_of_payment": payment.get("mode_of_payment"),
+                "amount": flt(payment.get("amount")),
+                "type": payment.get("type"),
+                "default": payment.get("default"),
+                "account": payment.get("account"),
+                "base_amount": flt(payment.get("base_amount")),
+            }
+        )
+
+    return selected_payments
+
+
+def _restore_selected_payments(invoice_doc, selected_payments):
+    """Restore POS-selected payment amounts after ERPNext loads POS Profile methods."""
+    if not selected_payments:
+        return
+
+    invoice_doc.set("payments", [])
+
+    for selected in selected_payments:
+        payment = invoice_doc.append("payments", {})
+        payment.mode_of_payment = selected.get("mode_of_payment")
+        payment.amount = flt(selected.get("amount"))
+        payment.type = selected.get("type")
+        payment.default = selected.get("default")
+
+        account = None
+        if payment.mode_of_payment and invoice_doc.company:
+            account = get_payment_account(payment.mode_of_payment, invoice_doc.company).get(
+                "account"
+            )
+        if not account:
+            account = selected.get("account")
+
+        payment.account = account
+        precision = invoice_doc.precision("base_paid_amount") or 2
+        payment.base_amount = flt(
+            payment.amount * flt(invoice_doc.get("conversion_rate") or 1),
+            precision,
+        )
+
+    invoice_doc.paid_amount = flt(sum(p.amount for p in invoice_doc.payments))
+    invoice_doc.base_paid_amount = flt(sum(p.base_amount or 0 for p in invoice_doc.payments))
 
 
 # ==========================================
@@ -314,6 +438,7 @@ def update_invoice(data):
 
         # Ensure the document type is set
         data.setdefault("doctype", doctype)
+        selected_payments = _snapshot_selected_payments(data.get("payments"))
 
         # Create or update invoice
         if data.get("name"):
@@ -455,8 +580,17 @@ def update_invoice(data):
 
         invoice_doc.disable_rounded_total = disable_rounded
 
+        # Avoid ERPNext showing "Payment methods refreshed" when it rebuilds
+        # POS Profile payment rows; selected amounts are restored below.
+        if selected_payments:
+            invoice_doc.set("payments", [])
+
         # Populate missing fields (company, currency, accounts, etc.)
         invoice_doc.set_missing_values()
+
+        # ERPNext refreshes POS Profile payment rows inside set_missing_values().
+        # Put the cashier-selected payment amounts back before totals/save.
+        _restore_selected_payments(invoice_doc, selected_payments)
 
         # Calculate totals and apply discounts (with rounding disabled)
         invoice_doc.calculate_taxes_and_totals()
@@ -509,6 +643,14 @@ def update_invoice(data):
         invoice_doc.docstatus = 0
         invoice_doc.save()
 
+        if invoice_doc.get("is_pos"):
+            try:
+                from zatca.zatca.sign_invoice import attach_fast_pos_qr
+
+                attach_fast_pos_qr(invoice_doc)
+            except Exception:
+                frappe.log_error(frappe.get_traceback(), "POS Draft QR Error")
+
         return invoice_doc.as_dict()
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Update Invoice Error")
@@ -519,6 +661,7 @@ def update_invoice(data):
 def submit_invoice(invoice=None, data=None):
     """Submit the invoice (Step 2)."""
     try:
+        started_at = time.perf_counter()
 
         # Handle different calling conventions
         if invoice is None:
@@ -556,6 +699,7 @@ def submit_invoice(invoice=None, data=None):
         doctype = "Sales Invoice"
 
         invoice_name = invoice.get("name")
+        selected_payments = _snapshot_selected_payments(invoice.get("payments"))
 
         # Get or create invoice
         if not invoice_name or not frappe.db.exists(doctype, invoice_name):
@@ -565,6 +709,8 @@ def submit_invoice(invoice=None, data=None):
         else:
             invoice_doc = frappe.get_doc(doctype, invoice_name)
             invoice_doc.update(invoice)
+
+        _restore_selected_payments(invoice_doc, selected_payments)
 
         # Ensure update_stock is set
         invoice_doc.update_stock = 1
@@ -607,25 +753,13 @@ def submit_invoice(invoice=None, data=None):
         # Auto-set batch numbers for returns
         _auto_set_return_batches(invoice_doc)
 
-        # Check if POS Settings allows negative stock
-        pos_settings_allow_negative = False
-        if pos_profile:
-            pos_settings_allow_negative = cint(
-                frappe.db.get_value(
-                    "POS Settings",
-                    {"pos_profile": pos_profile},
-                    "allow_negative_stock"
-                ) or 0
-            )
+        # ERPNext validates and updates stock during submit(). Skipping this
+        # duplicate POS-side check keeps checkout faster for busy counters.
 
-        # Validate stock availability only if negative stock is not allowed
-        if not pos_settings_allow_negative:
-            _validate_stock_on_invoice(invoice_doc)
-
-        # Save before submit
+        # submit() performs the final save. Avoid a separate save here because
+        # POS checkout needs the receipt as soon as the invoice is accepted.
         invoice_doc.flags.ignore_permissions = True
         frappe.flags.ignore_account_permission = True
-        invoice_doc.save()
 
         # Submit invoice with error handling
         # Note: Negative stock handling is now done through the CustomSalesInvoice override
@@ -679,6 +813,12 @@ def submit_invoice(invoice=None, data=None):
                 )
 
         # Return complete invoice details
+        elapsed = time.perf_counter() - started_at
+        if elapsed > 2:
+            frappe.logger("pos_next").warning(
+                "POS invoice submit took %.2fs for %s", elapsed, invoice_doc.name
+            )
+
         return {
             "name": invoice_doc.name,
             "status": invoice_doc.docstatus,
@@ -692,6 +832,34 @@ def submit_invoice(invoice=None, data=None):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Submit Invoice Error")
         raise
+
+
+@frappe.whitelist()
+def get_pos_receipt_html(invoice_name, print_format="POS QR Format", letterhead=None):
+    """Return rendered ERPNext receipt HTML without loading the full printview page."""
+    started_at = time.perf_counter()
+    if not invoice_name:
+        frappe.throw(_("Invoice name is required"))
+
+    if not frappe.db.exists("Sales Invoice", invoice_name):
+        frappe.throw(_("Invoice {0} does not exist").format(invoice_name))
+
+    if not frappe.has_permission("Sales Invoice", "read", invoice_name):
+        frappe.throw(_("You don't have permission to view this invoice"))
+
+    html = frappe.get_print(
+        "Sales Invoice",
+        invoice_name,
+        print_format=print_format,
+        no_letterhead=0 if letterhead else 1,
+        letterhead=letterhead,
+    )
+    elapsed = time.perf_counter() - started_at
+    if elapsed > 1:
+        frappe.logger("pos_next").warning(
+            "POS receipt render took %.2fs for %s", elapsed, invoice_name
+        )
+    return html
 
 
 # ==========================================

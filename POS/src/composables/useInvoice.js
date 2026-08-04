@@ -9,6 +9,7 @@ export function useInvoice() {
 	const payments = ref([])
 	const posProfile = ref(null)
 	const posOpeningShift = ref(null) // POS Opening Shift name
+	const draftInvoice = ref(null)
 	const additionalDiscount = ref(0)
 	const couponCode = ref(null)
 	const taxRules = ref([]) // Tax rules from POS Profile
@@ -576,6 +577,7 @@ export function useInvoice() {
 
 		const invoiceData = {
 			doctype: "Sales Invoice",
+			name: draftInvoice.value?.name,
 			pos_profile: posProfile.value,
 			posa_pos_opening_shift: posOpeningShift.value,
 			customer: customer.value?.name || customer.value,
@@ -613,7 +615,8 @@ export function useInvoice() {
 		}
 
 		const result = await updateInvoiceResource.submit({ data: invoiceData })
-		return result?.data || result
+		draftInvoice.value = result?.data || result
+		return draftInvoice.value
 	}
 
 	async function submitInvoice() {
@@ -630,6 +633,7 @@ export function useInvoice() {
 
 			const invoiceData = {
 				doctype: "Sales Invoice",
+				name: draftInvoice.value?.name,
 				pos_profile: posProfile.value,
 				posa_pos_opening_shift: posOpeningShift.value,
 				customer: customer.value?.name || customer.value,
@@ -666,17 +670,20 @@ export function useInvoice() {
 				update_stock: 1, // Critical: Ensures stock is updated
 			}
 
-			const draftInvoice = await updateInvoiceResource.submit({
-				data: invoiceData,
-			})
+			let invoiceDoc = invoiceData
+			if (!invoiceData.name) {
+				const createdDraft = await updateInvoiceResource.submit({
+					data: invoiceData,
+				})
 
-			let invoiceDoc = draftInvoice
-			if (
-				draftInvoice &&
-				typeof draftInvoice === "object" &&
-				"data" in draftInvoice
-			) {
-				invoiceDoc = draftInvoice.data
+				invoiceDoc = createdDraft
+				if (
+					createdDraft &&
+					typeof createdDraft === "object" &&
+					"data" in createdDraft
+				) {
+					invoiceDoc = createdDraft.data
+				}
 			}
 
 			if (!invoiceDoc || !invoiceDoc.name) {
@@ -800,6 +807,7 @@ export function useInvoice() {
 	function resetInvoice() {
 		invoiceItems.value = []
 		payments.value = []
+		draftInvoice.value = null
 		additionalDiscount.value = 0
 		couponCode.value = null
 
@@ -820,6 +828,7 @@ export function useInvoice() {
 	async function clearCart() {
 		invoiceItems.value = []
 		payments.value = []
+		draftInvoice.value = null
 		additionalDiscount.value = 0
 		couponCode.value = null
 
@@ -894,6 +903,7 @@ export function useInvoice() {
 		payments,
 		posProfile,
 		posOpeningShift,
+		draftInvoice,
 		additionalDiscount,
 		couponCode,
 		taxRules,

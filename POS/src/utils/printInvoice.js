@@ -2,6 +2,96 @@ import { call } from "@/utils/apiWrapper"
 import { logger } from "@/utils/logger"
 
 const log = logger.create('PrintInvoice')
+const preloadedPrintViews = new Map()
+
+function isIframeLoaded(iframe) {
+	return iframe?.contentWindow?.document?.readyState === "complete"
+}
+
+function createPrintViewIframe(invoiceName, printFormat = "POS QR Format", letterhead = null) {
+	const params = new URLSearchParams({
+		doctype: "Sales Invoice",
+		name: invoiceName,
+		format: printFormat,
+		no_letterhead: letterhead ? 0 : 1,
+		_lang: "en",
+		_t: Date.now(),
+	})
+
+	if (letterhead) {
+		params.append("letterhead", letterhead)
+	}
+
+	const iframe = document.createElement("iframe")
+	iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:820px;height:1200px;border:0;background:white;"
+	iframe.src = `/printview?${params.toString()}`
+	document.body.appendChild(iframe)
+	return iframe
+}
+
+async function waitForIframePrintReady(iframe, timeoutMs = 10000) {
+	if (!iframe?.contentWindow) {
+		throw new Error("Print iframe is not available")
+	}
+
+	await new Promise((resolve, reject) => {
+		let settled = false
+		const finish = () => {
+			if (settled) return
+			settled = true
+			clearTimeout(timer)
+			iframe.removeEventListener("load", finish)
+			resolve()
+		}
+		const timer = setTimeout(() => {
+			if (settled) return
+			settled = true
+			iframe.removeEventListener("load", finish)
+			reject(new Error("Print preview took too long to load"))
+		}, timeoutMs)
+
+		const doc = iframe.contentWindow?.document
+		if (doc?.readyState === "complete") {
+			finish()
+			return
+		}
+
+		iframe.addEventListener("load", finish, { once: true })
+	})
+
+	const doc = iframe.contentWindow.document
+	if (doc.fonts?.ready) {
+		await Promise.race([
+			doc.fonts.ready,
+			new Promise((resolve) => setTimeout(resolve, 3000)),
+		])
+	}
+
+	const images = Array.from(doc.images || [])
+	await Promise.race([
+		Promise.all(
+			images.map((img) => {
+				if (img.complete) return Promise.resolve()
+				return new Promise((resolve) => {
+					img.addEventListener("load", resolve, { once: true })
+					img.addEventListener("error", resolve, { once: true })
+				})
+			}),
+		),
+		new Promise((resolve) => setTimeout(resolve, 3000)),
+	])
+
+	await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+}
+
+function escapeHtml(value) {
+	return String(value ?? "")
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#039;")
+}
 
 export function openPrintView(
 	invoiceName,
@@ -39,6 +129,297 @@ export function openPrintView(
 	if (!printWindow) {
 		return printViaIframe(printUrl)
 	}
+	return true
+}
+
+export function printPrintViewIframe(
+	invoiceName,
+	printFormat = "POS QR Format",
+	letterhead = null,
+) {
+	if (!invoiceName) {
+		throw new Error("Invalid invoice name")
+	}
+
+	const params = new URLSearchParams({
+		doctype: "Sales Invoice",
+		name: invoiceName,
+		format: printFormat,
+		no_letterhead: letterhead ? 0 : 1,
+		_lang: "en",
+		trigger_print: 1,
+		_t: Date.now(),
+	})
+
+	if (letterhead) {
+		params.append("letterhead", letterhead)
+	}
+
+	return printViaIframe(`/printview?${params.toString()}`)
+}
+
+export function preloadPrintView(
+	invoiceName,
+	printFormat = "POS QR Format",
+	letterhead = null,
+) {
+	if (!invoiceName || preloadedPrintViews.has(invoiceName)) return false
+	const iframe = createPrintViewIframe(invoiceName, printFormat, letterhead)
+	preloadedPrintViews.set(invoiceName, iframe)
+	return true
+}
+
+export function printPreloadedPrintView(invoiceName, printFormat = "POS QR Format") {
+	const iframe = preloadedPrintViews.get(invoiceName)
+	if (!iframe?.contentWindow) {
+		return printPrintViewIframe(invoiceName, printFormat)
+	}
+
+	try {
+		iframe.contentWindow.focus()
+		iframe.contentWindow.print()
+		setTimeout(() => {
+			preloadedPrintViews.delete(invoiceName)
+			if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		}, 30000)
+		return true
+	} catch (error) {
+		log.warn("Preloaded print failed, using fresh printview", error)
+		preloadedPrintViews.delete(invoiceName)
+		if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		return printPrintViewIframe(invoiceName, printFormat)
+	}
+}
+
+export function printPreloadedPrintViewFast(invoiceName, printFormat = "POS QR Format") {
+	const iframe = preloadedPrintViews.get(invoiceName)
+	if (!isIframeLoaded(iframe)) {
+		return false
+	}
+
+	try {
+		iframe.contentWindow.focus()
+		iframe.contentWindow.print()
+		setTimeout(() => {
+			preloadedPrintViews.delete(invoiceName)
+			if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		}, 30000)
+		return true
+	} catch (error) {
+		log.warn("Fast preloaded print failed", error)
+		return false
+	}
+}
+
+export async function printPreloadedPrintViewWhenReady(invoiceName, printFormat = "POS QR Format") {
+	let iframe = preloadedPrintViews.get(invoiceName)
+	if (!iframe?.contentWindow) {
+		iframe = createPrintViewIframe(invoiceName, printFormat)
+		preloadedPrintViews.set(invoiceName, iframe)
+	}
+
+	try {
+		await waitForIframePrintReady(iframe)
+		iframe.contentWindow.focus()
+		iframe.contentWindow.print()
+		setTimeout(() => {
+			preloadedPrintViews.delete(invoiceName)
+			if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		}, 30000)
+		return true
+	} catch (error) {
+		preloadedPrintViews.delete(invoiceName)
+		if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		throw error
+	}
+}
+
+export function printCartReceiptNow(receiptData) {
+	const rows = (receiptData.items || []).map((item) => {
+		const qty = Number.parseFloat(item.quantity || item.qty || 0) || 0
+		const rate = Number.parseFloat(item.rate || item.price_list_rate || 0) || 0
+		const amount = Number.parseFloat(item.amount || qty * rate || 0) || 0
+		return `
+			<tr>
+				<td class="desc">${escapeHtml(item.item_name || item.item_code || "")}<br><small>${escapeHtml(item.item_code || "")}</small></td>
+				<td>${formatCurrency(qty)}</td>
+				<td>${formatCurrency(rate)}</td>
+				<td>${formatCurrency(amount)}</td>
+			</tr>
+		`
+	}).join("")
+
+	const receiptHtml = `
+		<style>
+			body { margin: 0; }
+			.pos-receipt { width: 80mm; max-width: 80mm; padding: 3mm; color: #000; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.25; }
+			.center { text-align: center; }
+			.bold { font-weight: 700; }
+			.box { border: 1px solid #000; margin: 3px 0; padding: 3px; }
+			table { width: 100%; border-collapse: collapse; }
+			th, td { border-bottom: 1px solid #999; padding: 2px; text-align: right; vertical-align: top; }
+			th:first-child, td:first-child { text-align: left; }
+			.desc { width: 43%; }
+			.totals td { border-bottom: 0; }
+			.grand td { border-top: 1px solid #000; font-weight: 700; }
+			.arabic { direction: rtl; }
+			@page { size: 80mm auto; margin: 0; }
+			@media print { body { margin: 0; } .pos-receipt { padding: 2mm; } }
+		</style>
+		<div class="pos-receipt">
+			<div class="center">
+				<div>Thank you for shopping with us</div>
+				<div class="arabic">شكراً لتسوقكم معنا</div>
+				<div class="bold">${escapeHtml(receiptData.company || "GOLDEN SHMASHI PRICE TRADING COMPANY")}</div>
+				<div class="arabic">شركة جولدن مشمشي التجارية</div>
+				<div class="box bold">POS Receipt<br><span class="arabic">إيصال نقطة بيع</span></div>
+			</div>
+			<table>
+				<tr><td>No / رقم</td><td class="bold">Creating...</td></tr>
+				<tr><td>Customer / العميل</td><td>${escapeHtml(receiptData.customer || "B2C")}</td></tr>
+				<tr><td>Date / تاريخ</td><td>${escapeHtml(receiptData.date)}</td></tr>
+				<tr><td>Time / الوقت</td><td>${escapeHtml(receiptData.time)}</td></tr>
+			</table>
+			<table>
+				<thead>
+					<tr>
+						<th>Item<br><span class="arabic">الصنف</span></th>
+						<th>Qty<br><span class="arabic">كمية</span></th>
+						<th>Rate<br><span class="arabic">السعر</span></th>
+						<th>Amount<br><span class="arabic">المبلغ</span></th>
+					</tr>
+				</thead>
+				<tbody>${rows}</tbody>
+			</table>
+			<table class="totals">
+				<tr><td>Net Total<br><span class="arabic">الإجمالي غير الضريبي</span></td><td>${formatCurrency(receiptData.netTotal)}</td></tr>
+				<tr><td>VAT @15.0%<br><span class="arabic">ضريبة القيمة المضافة</span></td><td>${formatCurrency(receiptData.taxTotal)}</td></tr>
+				<tr class="grand"><td>Grand Total<br><span class="arabic">الإجمالي الكلي</span></td><td>${formatCurrency(receiptData.grandTotal)}</td></tr>
+			</table>
+		</div>
+	`
+
+	return printHtmlViaIframe(receiptHtml, "Receipt")
+}
+
+export async function printReceiptHtml(
+	invoiceName,
+	printFormat = "POS QR Format",
+	letterhead = null,
+	reservedWindow = null,
+) {
+	if (!invoiceName) {
+		throw new Error("Invalid invoice name")
+	}
+
+	const receiptHtml = await call("pos_next.api.invoices.get_pos_receipt_html", {
+		invoice_name: invoiceName,
+		print_format: printFormat,
+		letterhead,
+	})
+
+	const printWindow =
+		reservedWindow && !reservedWindow.closed
+			? reservedWindow
+			: null
+
+	if (!printWindow) {
+		return printHtmlViaIframe(receiptHtml, invoiceName)
+	}
+
+	printWindow.document.open()
+	printWindow.document.write(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<title>Receipt - ${invoiceName}</title>
+		</head>
+		<body>
+			${receiptHtml}
+			<script>
+				window.addEventListener("load", function () {
+					setTimeout(function () {
+						window.focus();
+						window.print();
+					}, 0);
+				});
+			</script>
+		</body>
+		</html>
+	`)
+	printWindow.document.close()
+	printWindow.focus()
+	return true
+}
+
+export function printReceiptContent(receiptHtml, invoiceName = "Receipt", reservedWindow = null) {
+	if (!receiptHtml) return false
+
+	const printWindow =
+		reservedWindow && !reservedWindow.closed
+			? reservedWindow
+			: null
+
+	if (!printWindow) {
+		return printHtmlViaIframe(receiptHtml, invoiceName)
+	}
+
+	printWindow.document.open()
+	printWindow.document.write(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<title>Receipt - ${invoiceName}</title>
+		</head>
+		<body>
+			${receiptHtml}
+			<script>
+				window.addEventListener("load", function () {
+					setTimeout(function () {
+						window.focus();
+						window.print();
+					}, 0);
+				});
+			</script>
+		</body>
+		</html>
+	`)
+	printWindow.document.close()
+	printWindow.focus()
+	return true
+}
+
+function printHtmlViaIframe(receiptHtml, invoiceName) {
+	const iframe = document.createElement("iframe")
+	iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:820px;height:1200px;border:0;background:white;"
+	document.body.appendChild(iframe)
+
+	const doc = iframe.contentWindow?.document
+	if (!doc) return false
+
+	doc.open()
+	doc.write(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<title>Receipt - ${invoiceName}</title>
+		</head>
+		<body>${receiptHtml}</body>
+		</html>
+	`)
+	doc.close()
+
+	setTimeout(() => {
+		iframe.contentWindow?.focus()
+		iframe.contentWindow?.print()
+		setTimeout(() => {
+			if (document.body.contains(iframe)) document.body.removeChild(iframe)
+		}, 30000)
+	}, 0)
+
 	return true
 }
 
@@ -109,7 +490,7 @@ export async function printInvoice(
 
 function printViaIframe(printUrl) {
 	const iframe = document.createElement("iframe")
-	iframe.style.cssText = "position:fixed;right:-9999px;bottom:-9999px;width:1px;height:1px;border:none;"
+	iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:820px;height:1200px;border:none;background:white;"
 	iframe.src = printUrl
 	document.body.appendChild(iframe)
 	iframe.addEventListener("load", () => {
@@ -319,7 +700,7 @@ function printInvoiceCustom(invoiceData) {
 			<div class="receipt">
 				<!-- Header -->
 				<div class="header">
-					<div class="company-name">${invoiceData.company || "POS Next"}</div>
+					<div class="company-name">${invoiceData.company || invoiceData.pos_profile?.company || "POS Next"}</div>
 					<div style="font-size: 12px;">TAX INVOICE</div>
 				</div>
 
@@ -327,18 +708,18 @@ function printInvoiceCustom(invoiceData) {
 				<div class="invoice-info">
 					<div>
 						<span>Invoice #:</span>
-						<span><strong>${invoiceData.name}</strong></span>
+						<span><strong>${invoiceData.name || "Receipt"}</strong></span>
 					</div>
 					<div>
 						<span>Date:</span>
 						<span>${new Date(invoiceData.posting_date || Date.now()).toLocaleString()}</span>
 					</div>
 					${
-						invoiceData.customer_name
+						invoiceData.customer_name || invoiceData.customer
 							? `
 					<div>
 						<span>Customer:</span>
-						<span>${invoiceData.customer_name}</span>
+						<span>${invoiceData.customer_name || invoiceData.customer}</span>
 					</div>
 					`
 							: ""
@@ -357,7 +738,7 @@ function printInvoiceCustom(invoiceData) {
 
 				<!-- Items -->
 				<div class="items-table">
-					${invoiceData.items
+					${(invoiceData.items || [])
 						.map((item) => {
 							// Determine if item has promotional pricing
 							const hasItemDiscount =
@@ -401,16 +782,16 @@ function printInvoiceCustom(invoiceData) {
 				<!-- Totals -->
 				<div class="totals">
 					${
-						invoiceData.total_taxes_and_charges &&
-						invoiceData.total_taxes_and_charges > 0
+						(invoiceData.total_taxes_and_charges || invoiceData.total_tax) &&
+						(invoiceData.total_taxes_and_charges || invoiceData.total_tax) > 0
 							? `
 					<div class="total-row">
 						<span>Subtotal:</span>
-						<span>${formatCurrency((invoiceData.grand_total || 0) - (invoiceData.total_taxes_and_charges || 0))}</span>
+						<span>${formatCurrency((invoiceData.grand_total || 0) - (invoiceData.total_taxes_and_charges || invoiceData.total_tax || 0))}</span>
 					</div>
 					<div class="total-row">
 						<span>Tax:</span>
-						<span>${formatCurrency(invoiceData.total_taxes_and_charges)}</span>
+						<span>${formatCurrency(invoiceData.total_taxes_and_charges || invoiceData.total_tax)}</span>
 					</div>
 					`
 							: ""
