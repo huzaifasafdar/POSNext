@@ -24,7 +24,7 @@ def validate(doc, method=None):
 	apply_tax_inclusive(doc)
 	auto_assign_loyalty_program_on_invoice(doc)
 	route_return_income_to_sales_return(doc)
-
+	
 
 def route_return_income_to_sales_return(doc):
 	"""
@@ -56,7 +56,6 @@ def route_return_income_to_sales_return(doc):
 	for item in doc.get("items", []):
 		if item.income_account != sales_return_account:
 			item.income_account = sales_return_account
-
 
 def apply_tax_inclusive(doc):
 	"""
