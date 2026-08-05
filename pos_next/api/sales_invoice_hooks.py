@@ -23,6 +23,39 @@ def validate(doc, method=None):
 	"""
 	apply_tax_inclusive(doc)
 	auto_assign_loyalty_program_on_invoice(doc)
+	route_return_income_to_sales_return(doc)
+
+
+def route_return_income_to_sales_return(doc):
+	"""
+	For return invoices (is_return=1), route each item's income_account to the
+	company's dedicated Sales Return account, so returns accumulate in Sales
+	Return instead of debiting the regular Sales income account.
+
+	The target account is read from the Company custom field
+	`custom_default_sales_return_account`. If that field is empty for the
+	company, this function does nothing (safe no-op) — so companies without a
+	Sales Return account keep standard ERPNext behaviour.
+
+	Runs in `validate`, after ERPNext has already populated each item's
+	income_account, so we simply override it for returns.
+
+	Args:
+		doc: Sales Invoice document
+	"""
+	if not cint(doc.get("is_return")):
+		return
+
+	sales_return_account = frappe.db.get_value(
+		"Company", doc.company, "custom_default_sales_return_account"
+	)
+	if not sales_return_account:
+		# Not configured for this company -> keep standard behaviour.
+		return
+
+	for item in doc.get("items", []):
+		if item.income_account != sales_return_account:
+			item.income_account = sales_return_account
 
 
 def apply_tax_inclusive(doc):
