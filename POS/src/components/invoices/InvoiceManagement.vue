@@ -8,7 +8,15 @@
 		>
 			<!-- Main Container -->
 			<div class="fixed inset-0 flex items-center justify-center p-4">
-				<div class="w-full h-full max-w-[95vw] max-h-[95vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+				<div class="relative w-full h-full max-w-[95vw] max-h-[95vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+					<div
+						v-if="printingLastInvoice"
+						class="absolute inset-0 z-30 bg-white/85 backdrop-blur-sm flex items-center justify-center"
+					>
+						<div class="w-full max-w-sm px-6 text-center">
+							<div class="mx-auto h-14 w-14 rounded-full border-4 border-green-100 border-t-green-600 animate-spin"></div>
+						</div>
+					</div>
 					<!-- Header -->
 					<div class="flex items-center justify-between px-6 py-5 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
 						<div class="flex items-center gap-3">
@@ -25,6 +33,21 @@
 							</div>
 						</div>
 						<div class="flex items-center gap-2">
+							<Button
+								@click="$emit('print-last-invoice')"
+								:disabled="!lastInvoiceName || printingLastInvoice"
+								variant="subtle"
+								theme="green"
+								size="sm"
+								title="Print Last Invoice"
+							>
+								<template #prefix>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+									</svg>
+								</template>
+								Last Invoice Print
+							</Button>
 							<Button
 								@click="refreshCurrentTab"
 								:loading="loading"
@@ -595,12 +618,21 @@ const props = defineProps({
 		type: Array,
 		default: () => [],
 	},
+	lastInvoiceName: {
+		type: String,
+		default: "",
+	},
+	printingLastInvoice: {
+		type: Boolean,
+		default: false,
+	},
 })
 
 const emit = defineEmits([
 	"update:modelValue",
 	"view-invoice",
 	"print-invoice",
+	"print-last-invoice",
 	"load-draft",
 	"delete-draft",
 	"refresh-history",
@@ -1040,4 +1072,5 @@ onMounted(() => {
 	opacity: 1;
 	transform: translateY(0);
 }
+
 </style>

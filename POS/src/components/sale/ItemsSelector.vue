@@ -2,11 +2,11 @@
 	<div class="flex flex-col h-full bg-gray-50">
 		<!-- Item Groups Filter Tabs -->
 		<div class="px-1.5 sm:px-3 pt-1.5 sm:pt-3 pb-1.5 sm:pb-2 bg-white border-b border-gray-200">
-			<div class="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
+			<div class="flex items-center space-x-1 sm:space-x-2 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
 				<button
 					@click="itemStore.setSelectedItemGroup(null)"
 					:class="[
-						'flex items-center px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap transition-[background-color,border-color] duration-75 touch-manipulation snap-start flex-shrink-0',
+						'flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap transition-[background-color,border-color] duration-75 touch-manipulation snap-start flex-shrink-0',
 						!selectedItemGroup
 							? 'bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-sm'
 							: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:bg-gray-100',
@@ -15,38 +15,38 @@
 					<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
 					</svg>
-					<span>{{ __('All Items') }}</span>
+					<span>All Items</span>
 				</button>
 				<button
 					v-for="group in itemGroups"
 					:key="group.item_group"
 					@click="itemStore.setSelectedItemGroup(group.item_group)"
 					:class="[
-						'flex items-center px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap transition-[background-color,border-color] duration-75 touch-manipulation snap-start flex-shrink-0',
+						'flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap transition-[background-color,border-color] duration-75 touch-manipulation snap-start flex-shrink-0',
 						selectedItemGroup === group.item_group
 							? 'bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-sm'
 							: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:bg-gray-100',
 					]"
 				>
-					<span>{{ __(group.item_group) }}</span>
+					<span>{{ group.item_group }}</span>
 				</button>
 			</div>
 		</div>
 
 		<!-- Cache Sync Indicator -->
 		<div v-if="cacheSyncing" class="px-1.5 sm:px-3 py-1 bg-blue-50 border-b border-blue-200">
-			<div class="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-blue-700">
+			<div class="flex items-center justify-center space-x-2 text-[10px] sm:text-xs text-blue-700">
 				<div class="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-				<span>{{ __('Syncing catalog in background... {0} items cached', [cacheStats.items]) }}</span>
+				<span>Syncing catalog in background... {{ cacheStats.items }} items cached</span>
 			</div>
 		</div>
 
 		<!-- Search Bar with Barcode Scanner and View Controls -->
 		<div class="px-1.5 sm:px-3 py-1.5 sm:py-2 bg-white border-b border-gray-200">
-			<div class="flex items-center gap-1 sm:gap-2">
+			<div class="flex items-center space-x-1 sm:space-x-2">
 				<div class="flex-1 relative min-w-0">
 					<!-- Search Icon -->
-					<div class="absolute inset-y-0 start-0 ps-2 sm:ps-3 flex items-center pointer-events-none">
+					<div class="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
 						<svg
 							class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400"
 							fill="none"
@@ -69,21 +69,20 @@
 						:value="searchTerm"
 						@input="handleSearchInput"
 						@keydown="handleKeyDown"
-						@click="handleSearchClick"
 						type="text"
 						:placeholder="searchPlaceholder"
 						:class="[
-							'w-full text-[11px] sm:text-sm border rounded-lg px-2 sm:px-3 py-2 ps-7 sm:ps-10 pe-16 sm:pe-24 focus:outline-none transition-all',
+							'w-full text-[11px] sm:text-sm border rounded-lg px-2 sm:px-3 py-2 pl-7 sm:pl-10 pr-16 sm:pr-24 focus:outline-none transition-all',
 							autoAddEnabled
 								? 'border-blue-400 bg-blue-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 								: scannerEnabled
 								? 'border-green-400 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-transparent'
 								: 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 						]"
-						:aria-label="__('Search items')"
+						aria-label="Search items"
 					/>
 					<!-- Barcode Scan Icon and Auto-Add Toggle -->
-					<div class="absolute inset-y-0 end-0 pe-1 sm:pe-2 flex items-center gap-0.5">
+					<div class="absolute inset-y-0 right-0 pr-1 sm:pr-2 flex items-center gap-0.5">
 						<button
 							@click="toggleBarcodeScanner"
 							:class="[
@@ -92,8 +91,8 @@
 									? 'bg-green-100 hover:bg-green-200 active:bg-green-300 text-green-700'
 									: 'hover:bg-gray-100 active:bg-gray-200 text-gray-600'
 							]"
-							:title="scannerEnabled ? __('Barcode Scanner: ON (Click to disable)') : __('Barcode Scanner: OFF (Click to enable)')"
-							:aria-label="scannerEnabled ? __('Disable barcode scanner') : __('Enable barcode scanner')"
+							:title="scannerEnabled ? 'Barcode Scanner: ON (Click to disable)' : 'Barcode Scanner: OFF (Click to enable)'"
+							:aria-label="scannerEnabled ? 'Disable barcode scanner' : 'Enable barcode scanner'"
 						>
 							<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
@@ -107,25 +106,25 @@
 									? 'bg-blue-100 hover:bg-blue-200 active:bg-blue-300 text-blue-700'
 									: 'hover:bg-gray-100 active:bg-gray-200 text-gray-600'
 							]"
-							:title="autoAddEnabled ? __('Auto-Add: ON - Press Enter to add items to cart') : __('Auto-Add: OFF - Click to enable automatic cart addition on Enter')"
-							:aria-label="autoAddEnabled ? __('Disable auto-add') : __('Enable auto-add')"
+							:title="autoAddEnabled ? 'Auto-Add: ON - Press Enter to add items to cart' : 'Auto-Add: OFF - Click to enable automatic cart addition on Enter'"
+							:aria-label="autoAddEnabled ? 'Disable auto-add' : 'Enable auto-add'"
 						>
 							<svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 							</svg>
-							<span class="hidden xs:inline">{{ __('Auto') }}</span>
+							<span class="hidden xs:inline">Auto</span>
 						</button>
 					</div>
 				</div>
-				<div class="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 flex-shrink-0">
+				<div class="flex items-center space-x-0.5 bg-gray-100 rounded-lg p-0.5 flex-shrink-0">
 					<button
 						@click="setViewMode('grid')"
 						:class="[
 							'p-1.5 sm:p-2 rounded transition-[background-color,box-shadow] duration-75 touch-manipulation',
 							viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 active:bg-gray-300'
 						]"
-						:title="__('Grid View')"
-						:aria-label="__('Switch to grid view')"
+						title="Grid View"
+						:aria-label="'Switch to grid view'"
 					>
 						<svg class="w-4 h-4 sm:w-4.5 sm:h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
@@ -137,8 +136,8 @@
 							'p-1.5 sm:p-2 rounded transition-[background-color,box-shadow] duration-75 touch-manipulation',
 							viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 active:bg-gray-300'
 						]"
-						:title="__('List View')"
-						:aria-label="__('Switch to list view')"
+						title="List View"
+						:aria-label="'Switch to list view'"
 					>
 						<svg class="w-4 h-4 sm:w-4.5 sm:h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -150,19 +149,14 @@
 				<div class="relative z-50">
 					<button
 						@click="toggleSortDropdown"
-						data-sort-button
 						:class="[
 							'p-1.5 sm:p-2 rounded-lg transition-[background-color,box-shadow] duration-75 touch-manipulation border',
 							sortBy
 								? 'bg-blue-50 border-blue-400 text-blue-700 shadow-sm'
 								: 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 active:bg-gray-100'
 						]"
-						:title="sortBy
-							? (sortOrder === 'asc'
-								? __('Sorted by {0} A-Z', [getSortLabel(sortBy)])
-								: __('Sorted by {0} Z-A', [getSortLabel(sortBy)]))
-							: __('Sort items')"
-						:aria-label="__('Sort items')"
+						:title="sortBy ? `Sorted by ${getSortLabel(sortBy)} (${sortOrder === 'asc' ? 'A-Z' : 'Z-A'})` : 'Sort items'"
+						:aria-label="'Sort items'"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
@@ -173,12 +167,12 @@
 					<div
 						v-if="showSortDropdown"
 						@click.stop
-						class="absolute end-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
+						class="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
 						style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);"
 					>
 						<div class="py-2">
 							<div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-100">
-								{{ __('Sort Items') }}
+								Sort Items
 							</div>
 							<div class="py-1">
 								<!-- Clear Sort -->
@@ -193,7 +187,7 @@
 										<svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
 										</svg>
-										<span>{{ __('No Sorting') }}</span>
+										<span>No Sorting</span>
 									</span>
 								</button>
 
@@ -233,17 +227,17 @@
 			</div>
 		</div>
 
-		<!-- Initial Loading State - Show spinner while fetching items -->
-		<div v-if="loading && (!filteredItems || filteredItems.length === 0)" class="flex-1 flex items-center justify-center p-3">
+		<!-- Initial Loading State - Only for first load -->
+		<div v-if="loading && !filteredItems" class="flex-1 flex items-center justify-center p-3">
 			<div class="text-center py-8">
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-				<p class="mt-3 text-xs text-gray-500">{{ __('Loading items...') }}</p>
+				<p class="mt-3 text-xs text-gray-500">Loading items...</p>
 			</div>
 		</div>
 
-		<!-- Empty State - Only show when NOT loading and truly no items -->
+		<!-- Empty State - Simple, no animation -->
 		<div
-			v-else-if="!loading && (!filteredItems || filteredItems.length === 0)"
+			v-else-if="(!filteredItems || filteredItems.length === 0)"
 			class="flex-1 flex items-center justify-center p-3"
 		>
 			<div class="text-center py-8">
@@ -261,11 +255,9 @@
 					/>
 				</svg>
 				<p v-if="searchTerm || selectedItemGroup" class="mt-2 text-xs font-medium text-gray-700">
-					<span v-if="searchTerm && selectedItemGroup">{{ __('No results for {0} in {1}', [searchTerm, selectedItemGroup]) }}</span>
-					<span v-else-if="selectedItemGroup">{{ __('No results in {0}', [selectedItemGroup]) }}</span>
-					<span v-else>{{ __('No results for {0}', [searchTerm]) }}</span>
+					No results for <span v-if="searchTerm">"{{ searchTerm }}"</span><span v-if="searchTerm && selectedItemGroup"> in </span><span v-if="selectedItemGroup">{{ selectedItemGroup }}</span>
 				</p>
-				<p v-else class="mt-2 text-xs text-gray-500">{{ __('No items available') }}</p>
+				<p v-else class="mt-2 text-xs text-gray-500">No items available</p>
 			</div>
 		</div>
 
@@ -278,68 +270,44 @@
 			>
 				<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 sm:gap-2.5">
 					<div
-						v-for="item in displayedItems"
+						v-for="item in paginatedItems"
 						:key="item.item_code"
 						@touchstart.passive="getOptimizedClickHandler(item).touchstart"
 						@touchmove.passive="getOptimizedClickHandler(item).touchmove"
 						@touchend.passive="getOptimizedClickHandler(item).touchend"
 						@click="getOptimizedClickHandler(item).click"
 						:class="[
-							'group relative bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2.5 touch-manipulation transition-[border-color,box-shadow] duration-100 cursor-pointer hover:border-blue-400 hover:shadow-md',
+							'relative bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2.5 touch-manipulation transition-[border-color,box-shadow] duration-100 cursor-pointer hover:border-blue-400 hover:shadow-md',
 						]"
 					>
-						<!-- Stock Badge - Tap to select, long press to view warehouse availability -->
+						<!-- Stock Badge - Positioned at top right of card -->
+						<!-- Show for stock items and bundles (bundles now have calculated actual_qty) -->
 						<div
-							v-if="(item.is_stock_item || item.is_bundle) && !item.has_variants"
-							@pointerdown="onLongPressStart(item)"
-							@pointerup="onLongPressEnd"
-							@pointercancel="clearLongPress"
-							@pointerleave="clearLongPress"
+							v-if="item.is_stock_item || item.is_bundle"
 							:class="[
-								'absolute -top-1.5 -end-1.5 sm:-top-2 sm:-end-2 rounded-md shadow-lg z-10',
-								'px-2 sm:px-2.5 py-1 sm:py-1 text-[10px] sm:text-xs font-bold',
-								'border-2 border-white cursor-pointer select-none',
-								'hover:scale-110 hover:shadow-xl transition-all duration-200',
-								getStockStatus((item.actual_qty ?? item.stock_qty ?? 0)).color,
-								getStockStatus((item.actual_qty ?? item.stock_qty ?? 0)).textColor
+								'absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 rounded-md shadow-lg z-10',
+								'px-2 sm:px-2.5 py-1 sm:py-1',
+								'text-[10px] sm:text-xs font-bold',
+								'border-2 border-white',
+								getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).color,
+								getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).textColor
 							]"
-							:title="__('Check availability in other warehouses')"
+							:title="`${getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).label}: ${Math.floor(item.actual_qty ?? item.stock_qty ?? 0)} ${item.is_bundle ? 'Bundles' : (item.uom || item.stock_uom || 'Nos')}`"
 						>
-							{{ Math.floor((item.actual_qty ?? item.stock_qty ?? 0)) }}
+							{{ Math.floor(item.actual_qty ?? item.stock_qty ?? 0) }}
 						</div>
 
 						<!-- Item Image -->
 						<div class="relative aspect-square bg-gray-100 rounded-md mb-1.5 sm:mb-2 overflow-hidden">
-							<!-- Image with conditional blur on hover -->
-							<div :class="[
-								'w-full h-full transition-all duration-300',
-								(item.is_stock_item || item.is_bundle) && (item.actual_qty ?? item.stock_qty ?? 0) <= 0 ? 'group-hover:blur-sm group-hover:brightness-75' : ''
-							]">
-								<LazyImage
-									v-if="item.image"
-									:src="item.image"
-									:alt="item.item_name"
-									container-class="relative w-full h-full"
-									img-class="w-full h-full object-cover"
-									root-margin="100px"
-								>
-									<template #error>
-										<svg
-											class="h-8 w-8 sm:h-10 sm:w-10 text-gray-300"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-											/>
-										</svg>
-									</template>
-								</LazyImage>
-								<div v-else class="w-full h-full flex items-center justify-center">
+							<LazyImage
+								v-if="item.image"
+								:src="item.image"
+								:alt="item.item_name"
+								container-class="relative w-full h-full"
+								img-class="w-full h-full object-cover"
+								root-margin="100px"
+							>
+								<template #error>
 									<svg
 										class="h-8 w-8 sm:h-10 sm:w-10 text-gray-300"
 										fill="none"
@@ -353,24 +321,22 @@
 											d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 										/>
 									</svg>
-								</div>
-							</div>
-
-							<!-- Info Icon Overlay - Tap to select, long press to show warehouse availability -->
-							<div
-								v-if="(item.is_stock_item || item.is_bundle) && (item.actual_qty ?? item.stock_qty ?? 0) <= 0"
-								@pointerdown="onLongPressStart(item)"
-								@pointerup="onLongPressEnd"
-								@pointercancel="clearLongPress"
-								@pointerleave="clearLongPress"
-								class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 cursor-pointer select-none"
-								:title="__('Check availability in other warehouses')"
-							>
-								<div class="p-2.5 bg-white/80 backdrop-blur-sm rounded-full pointer-events-none">
-									<svg class="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-										<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-									</svg>
-								</div>
+								</template>
+							</LazyImage>
+							<div v-else class="w-full h-full flex items-center justify-center">
+								<svg
+									class="h-8 w-8 sm:h-10 sm:w-10 text-gray-300"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+									/>
+								</svg>
 							</div>
 						</div>
 
@@ -379,13 +345,10 @@
 							<h3 class="text-[10px] sm:text-xs font-semibold text-gray-900 truncate mb-0.5 leading-tight">
 								{{ item.item_name }}
 							</h3>
-							<p v-if="item.attributes" class="text-[8px] sm:text-[9px] text-gray-400 truncate leading-tight">
-								{{ Object.values(item.attributes).join(' / ') }}
-							</p>
-							<p class="text-[9px] sm:text-[10px] text-gray-500 leading-tight">
-									<span class="font-semibold text-blue-600">{{ formatCurrency(item.rate || item.price_list_rate || 0) }}</span>
-									<span class="text-gray-400">/ {{ item.uom || item.stock_uom || __('Nos', null, 'UOM') }}</span>
-							</p>
+                                                        <p class="text-[9px] sm:text-[10px] text-gray-500 leading-tight">
+                                                                <span class="font-semibold text-blue-600">{{ formatCurrency(item.rate || item.price_list_rate || 0) }}</span>
+                                                                <span class="text-gray-400">/ {{ item.uom || item.stock_uom || 'Nos' }}</span>
+                                                        </p>
 						</div>
 					</div>
 				</div>
@@ -393,17 +356,17 @@
 				<!-- Loading More Indicator for Grid View -->
 				<div v-if="loadingMore" class="flex justify-center items-center py-4">
 					<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-					<p class="ms-2 text-xs text-gray-500">{{ __('Loading more items...') }}</p>
+					<p class="ml-2 text-xs text-gray-500">Loading more items...</p>
 				</div>
 
-				<!-- End of Results Indicator - Show on last page when no more data -->
-				<div v-else-if="filteredItems.length > 0 && !searchTerm && currentPage === totalPages && totalPages >= 1" class="flex justify-center items-center py-3">
-					<p class="text-xs text-gray-400">{{ __('All items loaded') }}</p>
+				<!-- End of Results Indicator - Only show on last page or when all items fit in one page -->
+				<div v-else-if="!hasMore && filteredItems.length > 0 && !searchTerm && (currentPage === totalPages || totalPages === 1)" class="flex justify-center items-center py-3">
+					<p class="text-xs text-gray-400">All items loaded</p>
 				</div>
 
 				<!-- Search Results Count -->
 				<div v-else-if="searchTerm && filteredItems.length > 0" class="flex justify-center items-center py-3">
-					<p class="text-xs text-gray-500">{{ __('{0} items found', [filteredItems.length]) }}</p>
+					<p class="text-xs text-gray-500">{{ filteredItems.length }} items found</p>
 				</div>
 			</div>
 
@@ -411,13 +374,9 @@
 			<div v-if="totalPages > 1" class="px-2 sm:px-3 py-2 bg-white border-t border-gray-200">
 				<div class="flex flex-col sm:flex-row items-center justify-between gap-2">
 					<div class="text-[10px] sm:text-xs text-gray-600 order-2 sm:order-1">
-						{{ __('{0} - {1} of {2}', [
-							(((currentPage - 1) * itemsPerPage) + 1),
-							Math.min(currentPage * itemsPerPage, paginationTotal),
-							paginationTotal
-						]) }}
+						{{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}
 					</div>
-					<div class="flex items-center gap-1 order-1 sm:order-2">
+					<div class="flex items-center space-x-1 order-1 sm:order-2">
 						<button
 							@click="goToPage(1)"
 							:disabled="currentPage === 1"
@@ -427,10 +386,10 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to first page')"
+							:aria-label="'Go to first page'"
 						>
-							<span class="hidden xs:inline">{{ __('First') }}</span>
-							<span class="xs:hidden">&laquo;</span>
+							<span class="hidden xs:inline">First</span>
+							<span class="xs:hidden">«</span>
 						</button>
 						<button
 							@click="previousPage"
@@ -441,12 +400,12 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to previous page')"
+							:aria-label="'Go to previous page'"
 						>
-							<span class="hidden xs:inline">{{ __('Previous') }}</span>
-							<span class="xs:hidden">&lsaquo;</span>
+							<span class="hidden xs:inline">Previous</span>
+							<span class="xs:hidden">‹</span>
 						</button>
-						<div class="flex items-center gap-0.5 sm:gap-1">
+						<div class="flex items-center space-x-0.5 sm:space-x-1">
 							<button
 								v-for="page in getPaginationRange()"
 								:key="page"
@@ -457,7 +416,7 @@
 										? 'bg-blue-600 text-white border-blue-600'
 										: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 								]"
-								:aria-label="__('Go to page {0}', [page])"
+								:aria-label="'Go to page ' + page"
 							>
 								{{ page }}
 							</button>
@@ -471,10 +430,10 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to next page')"
+							:aria-label="'Go to next page'"
 						>
-							<span class="hidden xs:inline">{{ __('Next') }}</span>
-							<span class="xs:hidden">&rsaquo;</span>
+							<span class="hidden xs:inline">Next</span>
+							<span class="xs:hidden">›</span>
 						</button>
 						<button
 							@click="goToPage(totalPages)"
@@ -485,10 +444,10 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to last page')"
+							:aria-label="'Go to last page'"
 						>
-							<span class="hidden xs:inline">{{ __('Last') }}</span>
-							<span class="xs:hidden">&raquo;</span>
+							<span class="hidden xs:inline">Last</span>
+							<span class="xs:hidden">»</span>
 						</button>
 					</div>
 				</div>
@@ -502,26 +461,26 @@
 				class="flex-1 overflow-x-auto overflow-y-auto"
 				style="min-height: 0;"
 			>
-				<table v-if="displayedItems.length > 0" class="min-w-full divide-y divide-gray-200">
+				<table v-if="paginatedItems.length > 0" class="min-w-full divide-y divide-gray-200">
 					<thead class="bg-gray-50 sticky top-0 z-10">
 						<tr>
-							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[50px] sm:w-[60px]">{{ __('Image') }}</th>
-							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 max-w-[120px] sm:max-w-[180px] md:max-w-[200px]">{{ __('Name') }}</th>
-							<th scope="col" class="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 sm:max-w-[150px]">{{ __('Code') }}</th>
-							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">{{ __('Rate') }}</th>
-							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">{{ __('Qty') }}</th>
-							<th scope="col" class="hidden md:table-cell px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 md:w-[80px]">{{ __('UOM') }}</th>
+							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[50px] sm:w-[60px]">Image</th>
+							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 max-w-[120px] sm:max-w-[180px] md:max-w-[200px]">Name</th>
+							<th scope="col" class="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 sm:max-w-[150px]">Code</th>
+							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">Rate</th>
+							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">Qty</th>
+							<th scope="col" class="hidden md:table-cell px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 md:w-[80px]">UOM</th>
 						</tr>
 					</thead>
 					<tbody class="bg-white divide-y divide-gray-200">
 						<tr
-							v-for="item in displayedItems"
+							v-for="item in paginatedItems"
 							:key="item.item_code"
 							@touchstart.passive="getOptimizedClickHandler(item).touchstart"
 							@touchmove.passive="getOptimizedClickHandler(item).touchmove"
 							@touchend.passive="getOptimizedClickHandler(item).touchend"
 							@click="getOptimizedClickHandler(item).click"
-							class="group cursor-pointer hover:bg-blue-50 hover:shadow-md transition-[background-color,box-shadow] duration-100 touch-manipulation active:bg-blue-100"
+							class="cursor-pointer hover:bg-blue-50 hover:shadow-md transition-[background-color,box-shadow] duration-100 touch-manipulation active:bg-blue-100"
 						>
 							<td class="px-2 sm:px-3 py-2 whitespace-nowrap w-[50px] sm:w-[60px]">
 								<div class="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
@@ -548,9 +507,6 @@
 								<div class="text-xs sm:text-sm font-medium text-gray-900 truncate" :title="item.item_name">
 									{{ item.item_name }}
 								</div>
-								<div v-if="item.attributes" class="text-[8px] sm:text-[9px] text-gray-400 truncate leading-tight">
-									{{ Object.values(item.attributes).join(' / ') }}
-								</div>
 							</td>
 							<td class="hidden sm:table-cell px-2 sm:px-3 py-2 whitespace-nowrap sm:max-w-[150px]">
 								<div class="text-xs sm:text-sm text-gray-500 truncate" :title="item.item_code">{{ item.item_code }}</div>
@@ -559,33 +515,27 @@
 								<div class="text-xs sm:text-sm font-semibold text-blue-600">{{ formatCurrency(item.rate || item.price_list_rate || 0) }}</div>
 							</td>
 							<td class="px-2 sm:px-3 py-2 whitespace-nowrap w-[70px] sm:w-[100px]">
-								<!-- Stock Badge - Tap to select, long press to view warehouse availability -->
-								<div
-									v-if="(item.is_stock_item || item.is_bundle) && !item.has_variants"
-									@pointerdown="onLongPressStart(item)"
-									@pointerup="onLongPressEnd"
-									@pointercancel="clearLongPress"
-									@pointerleave="clearLongPress"
+								<span
+									v-if="item.is_stock_item || item.is_bundle"
 									:class="[
 										'inline-block px-1.5 sm:px-3 py-0.5 sm:py-1.5 rounded-md shadow-sm',
-										'text-[10px] sm:text-sm font-bold cursor-pointer select-none',
-										'hover:scale-105 hover:shadow-md transition-all duration-200',
-										getStockStatus((item.actual_qty ?? item.stock_qty ?? 0)).color,
-										getStockStatus((item.actual_qty ?? item.stock_qty ?? 0)).textColor
+										'text-[10px] sm:text-sm font-bold',
+										getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).color,
+										getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).textColor
 									]"
-									:title="__('Check availability in other warehouses')"
+									:title="`${getStockStatus(item.actual_qty ?? item.stock_qty ?? 0).label}: ${Math.floor(item.actual_qty ?? item.stock_qty ?? 0)} ${item.is_bundle ? 'Bundles' : (item.uom || item.stock_uom || 'Nos')}`"
 								>
-									{{ Math.floor((item.actual_qty ?? item.stock_qty ?? 0)) }}
-								</div>
+									{{ Math.floor(item.actual_qty ?? item.stock_qty ?? 0) }}
+								</span>
 								<span
 									v-else
 									class="text-xs sm:text-sm text-gray-400 italic"
 								>
-									{{ __('N/A') }}
+									N/A
 								</span>
 							</td>
 							<td class="hidden md:table-cell px-2 sm:px-3 py-2 whitespace-nowrap md:w-[80px]">
-								<div class="text-xs sm:text-sm text-gray-500">{{ item.uom || item.stock_uom || __('Nos', null, 'UOM') }}</div>
+								<div class="text-xs sm:text-sm text-gray-500">{{ item.uom || item.stock_uom || 'Nos' }}</div>
 							</td>
 						</tr>
 						<!-- Loading More Indicator Row -->
@@ -593,22 +543,22 @@
 							<td colspan="6" class="px-2 sm:px-3 py-4 text-center bg-white">
 								<div class="flex justify-center items-center">
 									<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-									<p class="ms-2 text-xs text-gray-500">{{ __('Loading more items...') }}</p>
+									<p class="ml-2 text-xs text-gray-500">Loading more items...</p>
 								</div>
 							</td>
 						</tr>
 
-						<!-- End of Results Indicator Row - Show on last page when no more data -->
-						<tr v-else-if="filteredItems.length > 0 && !searchTerm && currentPage === totalPages && totalPages >= 1">
+						<!-- End of Results Indicator Row - Only show on last page or when all items fit in one page -->
+						<tr v-else-if="!hasMore && filteredItems.length > 0 && !searchTerm && (currentPage === totalPages || totalPages === 1)">
 							<td colspan="6" class="px-2 sm:px-3 py-3 text-center bg-white">
-								<p class="text-xs text-gray-400">{{ __('All items loaded') }}</p>
+								<p class="text-xs text-gray-400">All items loaded</p>
 							</td>
 						</tr>
 
 						<!-- Search Results Count Row -->
 						<tr v-else-if="searchTerm && filteredItems.length > 0">
 							<td colspan="6" class="px-2 sm:px-3 py-3 text-center bg-white">
-								<p class="text-xs text-gray-500">{{ __('{0} items found', [filteredItems.length]) }}</p>
+								<p class="text-xs text-gray-500">{{ filteredItems.length }} items found</p>
 							</td>
 						</tr>
 					</tbody>
@@ -619,13 +569,9 @@
 			<div v-if="totalPages > 1" class="px-2 sm:px-3 py-2 bg-white border-t border-gray-200">
 				<div class="flex flex-col sm:flex-row items-center justify-between gap-2">
 					<div class="text-[10px] sm:text-xs text-gray-600 order-2 sm:order-1">
-						{{ __('{0} - {1} of {2}', [
-							(((currentPage - 1) * itemsPerPage) + 1),
-							Math.min(currentPage * itemsPerPage, paginationTotal),
-							paginationTotal
-						]) }}
+						{{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}
 					</div>
-					<div class="flex items-center gap-1 order-1 sm:order-2">
+					<div class="flex items-center space-x-1 order-1 sm:order-2">
 						<button
 							@click="goToPage(1)"
 							:disabled="currentPage === 1"
@@ -635,10 +581,10 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to first page')"
+							:aria-label="'Go to first page'"
 						>
-							<span class="hidden xs:inline">{{ __('First') }}</span>
-							<span class="xs:hidden">&laquo;</span>
+							<span class="hidden xs:inline">First</span>
+							<span class="xs:hidden">«</span>
 						</button>
 						<button
 							@click="previousPage"
@@ -649,12 +595,12 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to previous page')"
+							:aria-label="'Go to previous page'"
 						>
-							<span class="hidden xs:inline">{{ __('Previous') }}</span>
-							<span class="xs:hidden">&lsaquo;</span>
+							<span class="hidden xs:inline">Previous</span>
+							<span class="xs:hidden">‹</span>
 						</button>
-						<div class="flex items-center gap-0.5 sm:gap-1">
+						<div class="flex items-center space-x-0.5 sm:space-x-1">
 							<button
 								v-for="page in getPaginationRange()"
 								:key="page"
@@ -665,7 +611,7 @@
 										? 'bg-blue-600 text-white border-blue-600'
 										: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 								]"
-								:aria-label="__('Go to page {0}', [page])"
+								:aria-label="'Go to page ' + page"
 							>
 								{{ page }}
 							</button>
@@ -679,10 +625,10 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to next page')"
+							:aria-label="'Go to next page'"
 						>
-							<span class="hidden xs:inline">{{ __('Next') }}</span>
-							<span class="xs:hidden">&rsaquo;</span>
+							<span class="hidden xs:inline">Next</span>
+							<span class="xs:hidden">›</span>
 						</button>
 						<button
 							@click="goToPage(totalPages)"
@@ -693,37 +639,24 @@
 									? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
 									: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
 							]"
-							:aria-label="__('Go to last page')"
+							:aria-label="'Go to last page'"
 						>
-							<span class="hidden xs:inline">{{ __('Last') }}</span>
-							<span class="xs:hidden">&raquo;</span>
+							<span class="hidden xs:inline">Last</span>
+							<span class="xs:hidden">»</span>
 						</button>
 					</div>
 				</div>
 			</div>
 		</div>
 	</div>
-
-	<!-- Warehouse Availability Dialog -->
-	<WarehouseAvailabilityDialog
-		v-if="warehouseDialogItem"
-		v-model="showWarehouseDialog"
-		:item-code="warehouseDialogItem.itemCode"
-		:item-name="warehouseDialogItem.itemName"
-		:uom="warehouseDialogItem.uom"
-		:company="warehouseDialogItem.company"
-	/>
 </template>
 
 <script setup>
 import LazyImage from "@/components/common/LazyImage.vue"
-import WarehouseAvailabilityDialog from "@/components/sale/WarehouseAvailabilityDialog.vue"
 import { useItemSearchStore } from "@/stores/itemSearch"
 import { usePOSSettingsStore } from "@/stores/posSettings"
 import { useStock } from "@/composables/useStock"
-import { useDialogState } from "@/composables/useDialogState"
-import { useSearchInput } from "@/composables/useSearchInput"
-import { DEFAULT_CURRENCY, formatCurrency as formatCurrencyUtil } from "@/utils/currency"
+import { formatCurrency as formatCurrencyUtil } from "@/utils/currency"
 import { useToast } from "@/composables/useToast"
 import { storeToRefs } from "pinia"
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
@@ -733,8 +666,6 @@ import {
 	addPassiveListener,
 	runWhenIdle
 } from "@/utils/lowEndOptimizations"
-import { performanceConfig } from "@/utils/performanceConfig"
-import { shouldValidateItemStock } from "@/utils/stockValidator"
 
 const props = defineProps({
 	posProfile: String,
@@ -744,7 +675,7 @@ const props = defineProps({
 	},
 	currency: {
 		type: String,
-		default: DEFAULT_CURRENCY,
+		default: "USD",
 	},
 })
 
@@ -754,7 +685,6 @@ const emit = defineEmits(["item-selected"])
 const { getStockStatus } = useStock()
 const settingsStore = usePOSSettingsStore()
 const { showError, showWarning } = useToast()
-const { isAnyDialogOpen } = useDialogState()
 
 // Use Pinia store
 const itemStore = useItemSearchStore()
@@ -765,37 +695,28 @@ const {
 	itemGroups,
 	loading,
 	loadingMore,
+	searching,
 	hasMore,
 	cacheSyncing,
 	cacheStats,
 	sortBy,
 	sortOrder,
-	totalServerItems,
 } = storeToRefs(itemStore)
-
-// Search input composable — owns search/scanner state, timers, concurrency
-const {
-	searchInputRef, scannerEnabled, autoAddEnabled,
-	handleSearchInput, handleKeyDown, handleSearchClick,
-	toggleBarcodeScanner, toggleAutoAdd, focusSearchInput,
-	clearSearchAndResetInput,
-	cleanup: cleanupSearchInput,
-} = useSearchInput({
-	itemStore, onItemFound: selectItem,
-	showWarning, isAnyDialogOpen,
-})
 
 // Local state
 const viewMode = ref("grid")
+const lastKeyTime = ref(0)
+const barcodeBuffer = ref("")
+const searchInputRef = ref(null)
+const scannerEnabled = ref(false)
+const autoAddEnabled = ref(false)
 const itemThreshold = ref(50) // Threshold for auto-switching to list view
 const userManuallySetView = ref(false) // Track if user manually changed view mode
+const scannerInputDetected = ref(false) // Track if current input is from scanner
+const autoSearchTimer = ref(null) // Timer for auto-search when typing stops
 const lastAutoSwitchCount = ref(0)
+const lastFilterSignature = ref("")
 const showSortDropdown = ref(false) // Sort dropdown visibility
-const skipPageReset = ref(false) // Skip page reset when navigating via pagination
-
-// Warehouse availability dialog state
-const showWarehouseDialog = ref(false)
-const warehouseDialogItem = ref(null)
 
 // Infinite scroll refs
 const gridScrollContainer = ref(null)
@@ -806,67 +727,53 @@ const scrollCleanupFns = ref([])
 
 // Pagination state (for client-side display)
 const currentPage = ref(1)
-const itemsPerPage = ref(performanceConfig.get('itemsPerPage') || 100)
-const lastFilterSignature = ref("")
+const itemsPerPage = ref(20)
 
-// Computed paginated items — server fetches one page at a time,
-// so filteredItems already contains only the current page's items.
-const displayedItems = computed(() => {
+// Computed paginated items
+// filteredItems is already reactive and includes live stock from stockStore
+const paginatedItems = computed(() => {
 	if (!filteredItems.value) return []
-	return filteredItems.value
+	const start = (currentPage.value - 1) * itemsPerPage.value
+	const end = start + itemsPerPage.value
+	return filteredItems.value.slice(start, end)
 })
 
-// Total item count for pagination display
-const paginationTotal = computed(() => {
-	if (searchTerm.value?.trim()) return filteredItems.value?.length || 0
-	return totalServerItems.value || filteredItems.value?.length || 0
-})
-
-// Total pages is based on server-side total count (not local array length).
-// During search, fall back to local results since server count is for browsing.
 const totalPages = computed(() => {
-	if (searchTerm.value?.trim()) {
-		// During search, we don't paginate server-side — show all results
-		return 1
-	}
-	if (totalServerItems.value > 0) {
-		return Math.ceil(totalServerItems.value / itemsPerPage.value)
-	}
 	if (!filteredItems.value) return 0
 	return Math.ceil(filteredItems.value.length / itemsPerPage.value)
 })
 
 const SEARCH_PLACEHOLDERS = Object.freeze({
-	auto: __("Auto-Add ON - Type or scan barcode"),
-	scanner: __("Scanner ON - Enable Auto for automatic addition"),
-	default: __("Search by item code, name or scan barcode"),
+	auto: "Auto-Add ON - Type or scan barcode",
+	scanner: "Scanner ON - Enable Auto for automatic addition",
+	default: "Search by item code, name or scan barcode",
 })
 
 // Sort configuration
 const SORT_OPTIONS = Object.freeze([
 	{
 		field: 'name',
-		label: __('Name'),
+		label: 'Name',
 		icon: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z'
 	},
 	{
 		field: 'quantity',
-		label: __('Quantity'),
+		label: 'Quantity',
 		icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'
 	},
 	{
 		field: 'item_group',
-		label: __('Item Group'),
+		label: 'Item Group',
 		icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'
 	},
 	{
 		field: 'price',
-		label: __('Price'),
+		label: 'Price',
 		icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
 	},
 	{
 		field: 'item_code',
-		label: __('Item Code'),
+		label: 'Item Code',
 		icon: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14'
 	}
 ])
@@ -912,18 +819,11 @@ watch(
 	{ immediate: true },
 )
 
-// Reset to page 1 when filtered items meaningfully change (group switch, search, etc.)
-// Skip reset when the change is from pagination navigation (fetchPage)
+// Reset to page 1 when filtered items meaningfully change
 watch(
 	filteredItems,
 	(newItems) => {
 		if (!newItems) return
-
-		// Skip page reset for pagination-driven changes
-		if (skipPageReset.value) {
-			skipPageReset.value = false
-			return
-		}
 
 		const itemCount = newItems.length
 		const firstCode = itemCount > 0 ? newItems[0]?.item_code || "" : ""
@@ -960,10 +860,27 @@ watch(
 // Throttle scroll handler for better performance
 let scrollTimeout = null
 
-// Scroll handler — pagination controls handle page navigation now.
-// Scroll is only used for scrolling within the current page.
-const handleScrollRAF = throttleRAF(() => {
-	// No-op: pagination handles page navigation via goToPage/nextPage/previousPage
+// Optimized scroll handler using RAF throttling
+const handleScrollRAF = throttleRAF((event) => {
+	const container = event.target
+	const scrollPosition = container.scrollTop + container.clientHeight
+	const scrollHeight = container.scrollHeight
+	const threshold = 200
+
+	const isSearching = searchTerm.value && searchTerm.value.trim().length > 0
+
+	if (
+		!isSearching &&
+		scrollHeight - scrollPosition < threshold &&
+		hasMore.value &&
+		!loadingMore.value &&
+		!loading.value
+	) {
+		// Use runWhenIdle to load more items without blocking scroll
+		runWhenIdle(() => {
+			itemStore.loadMoreItems()
+		}, { timeout: 1000 })
+	}
 })
 
 function handleScroll(event) {
@@ -1012,14 +929,81 @@ onUnmounted(() => {
 	scrollCleanupFns.value.forEach(cleanup => cleanup())
 	scrollCleanupFns.value = []
 
-	// Clear handlers and timers
+	// Clear optimized click handlers
 	optimizedClickHandlers.clear()
-	clearLongPress()
-	cleanupSearchInput()
 
 	// Remove click outside listener for sort dropdown
 	document.removeEventListener('click', handleClickOutside)
 })
+
+// Handle keydown for barcode scanner detection
+function handleKeyDown(event) {
+	const currentTime = Date.now()
+	const timeDiff = currentTime - lastKeyTime.value
+
+	// If Enter/newline is pressed, trigger barcode search
+	if (event.key === "Enter") {
+		event.preventDefault()
+
+		// Auto-add if Auto-Add mode is enabled (regardless of manual typing vs scanner)
+		if (autoAddEnabled.value) {
+			// Auto-add enabled - add item directly to cart
+			handleBarcodeSearch(true) // Pass true to indicate auto-add
+		} else {
+			// Auto-add disabled - normal search behavior
+			handleBarcodeSearch(false)
+		}
+
+		// Reset detection
+		barcodeBuffer.value = ""
+		scannerInputDetected.value = false
+
+		// Clear auto-search timer since Enter was pressed
+		if (autoSearchTimer.value) {
+			clearTimeout(autoSearchTimer.value)
+			autoSearchTimer.value = null
+		}
+
+		return
+	}
+
+	// Barcode scanners typically input very fast (< 50ms between characters)
+	// If time between keystrokes is very short, it's likely a barcode scanner
+	if (
+		timeDiff < 50 &&
+		event.key.length === 1 &&
+		barcodeBuffer.value.length > 0
+	) {
+		barcodeBuffer.value += event.key
+		scannerInputDetected.value = true // Mark as scanner input
+	} else if (event.key.length === 1) {
+		// Manual typing - reset buffer
+		barcodeBuffer.value = event.key
+		scannerInputDetected.value = false // Mark as manual input
+	}
+
+	lastKeyTime.value = currentTime
+}
+
+// Handle search input with instant reactivity
+function handleSearchInput(event) {
+	const value = event.target.value
+	itemStore.setSearchTerm(value)
+
+	// Clear any existing timer
+	if (autoSearchTimer.value) {
+		clearTimeout(autoSearchTimer.value)
+		autoSearchTimer.value = null
+	}
+
+	// If Auto-Add is enabled and user is typing, automatically trigger search after they stop
+	if (autoAddEnabled.value && value.trim().length > 0) {
+		// Wait 500ms after user stops typing, then auto-search and add
+		autoSearchTimer.value = setTimeout(() => {
+			handleBarcodeSearch(true) // Auto-add mode
+		}, 500) // 500ms delay after typing stops
+	}
+}
 
 // Create optimized click handlers for better touch response
 const optimizedClickHandlers = new Map()
@@ -1027,6 +1011,7 @@ const optimizedClickHandlers = new Map()
 function getOptimizedClickHandler(item) {
 	const key = item.item_code
 	if (!optimizedClickHandlers.has(key)) {
+		// Pass item_code instead of item reference to avoid closure issues
 		const handler = createOptimizedClickHandler(() => {
 			handleItemClick(item.item_code)
 		}, {
@@ -1037,88 +1022,132 @@ function getOptimizedClickHandler(item) {
 	return optimizedClickHandlers.get(key)
 }
 
-// Long press handler for stock badge/info icon
-// Short tap = select item (with validation), Long press = show warehouse availability
-let longPressTimer = null
-let longPressItem = null
-let longPressTriggered = false
-let itemHandledByLongPress = false // Flag to prevent double handling
-
-function onLongPressStart(item) {
-	clearTimeout(longPressTimer)
-	longPressItem = item
-	longPressTriggered = false
-	longPressTimer = setTimeout(() => {
-		longPressTriggered = true
-		itemHandledByLongPress = true
-		showWarehouseAvailability(item)
-	}, 500)
-}
-
-function onLongPressEnd() {
-	clearTimeout(longPressTimer)
-	// If not a long press, trigger item selection
-	if (!longPressTriggered && longPressItem) {
-		itemHandledByLongPress = true
-		selectItem(longPressItem)
-	}
-	longPressTimer = null
-	longPressItem = null
-	longPressTriggered = false
-}
-
-function clearLongPress() {
-	clearTimeout(longPressTimer)
-	longPressTimer = null
-	longPressItem = null
-	longPressTriggered = false
-}
-
-/**
- * Validates stock and emits item-selected if valid
- * @param {Object} item - Item to select
- * @param {boolean} autoAdd - Auto-add flag for barcode scanning
- * @returns {boolean} - True if item was emitted, false if blocked
- */
-function selectItem(item, autoAdd = false) {
-	if (!item) return false
-
-	// Early out-of-stock guard — full qty validation happens in cartStore.addItem()
-	if (!item.has_variants && settingsStore.shouldEnforceStockValidation() && shouldValidateItemStock(item)) {
-		const qty = item.actual_qty ?? item.stock_qty ?? 0
-		if (qty <= 0) {
-			showError(__('"{0}" is out of stock in warehouse "{1}".', [item.item_name, item.warehouse || '']))
-			return false
-		}
-	}
-
-	emit("item-selected", item, autoAdd)
-	return true
-}
-
 function handleItemClick(itemCode) {
-	// Skip if already handled by long press handler (prevents double-add)
-	if (itemHandledByLongPress) {
-		itemHandledByLongPress = false
+	// Find the current item by code to get latest stock values
+	const item = filteredItems.value.find(i => i.item_code === itemCode)
+	if (!item) return
+
+	// Check stock availability and show error if needed, but still emit the event
+	// Skip validation for batch/serial items - they have their own validation in the dialog
+	// Check stock for stock items AND Product Bundles (bundles now have calculated stock)
+	const qty = Math.floor(item.actual_qty ?? item.stock_qty ?? 0)
+	if ((item.is_stock_item || item.is_bundle) && !item.has_serial_no && !item.has_batch_no && qty <= 0 && settingsStore.shouldEnforceStockValidation()) {
+		const itemType = item.is_bundle ? "Bundle" : "Item"
+		showError(`"${item.item_name}" cannot be added to cart. ${itemType} is out of stock. Allow Negative Stock is disabled.`)
 		return
 	}
-	const item = filteredItems.value.find(i => i.item_code === itemCode)
-	selectItem(item)
+
+	emit("item-selected", item)
+}
+
+async function handleBarcodeSearch(forceAutoAdd = false) {
+	const barcode = searchTerm.value.trim()
+
+	if (!barcode) {
+		return
+	}
+
+	// Auto-add if explicitly requested (from scanner newline detection)
+	// OR if both scanner and auto-add modes are enabled
+	const shouldAutoAdd =
+		forceAutoAdd || (scannerEnabled.value && autoAddEnabled.value)
+
+	// Capture before the await — scannerInputDetected is reset synchronously
+	// in handleKeyDown right after this function is called, so by the time the
+	// await resolves the flag will already be false.
+	const isScannerInput = scannerInputDetected.value
+
+	try {
+		// First try exact barcode lookup via API
+		const item = await itemStore.searchByBarcode(barcode)
+
+		if (item) {
+			// Item found by barcode - add to cart immediately with auto-add flag
+			emit("item-selected", item, shouldAutoAdd)
+			itemStore.clearSearch()
+			return
+		}
+	} catch (error) {
+		// API error means "not found" (frappe.throw sends HTTP 417).
+		// Must return here — falling through to the filteredItems check below
+		// risks using stale results from the previous scan (the 300ms debounce
+		// may have fired during the slow production API call and populated
+		// filteredItems with the previous item, causing qty to increment).
+		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+		if (shouldAutoAdd) {
+			itemStore.clearSearch()
+		}
+		return
+	}
+
+	// When input came from a barcode scanner, filteredItems may be stale:
+	// the 300ms search debounce hasn't fired yet so searchResults still holds
+	// results from the previous scan. Trusting that stale list is what causes
+	// a previously-scanned item to get its quantity bumped. Skip the fallback
+	// and treat the API miss as definitive "not found".
+	if (!isScannerInput && filteredItems.value.length === 1) {
+		emit("item-selected", filteredItems.value[0], shouldAutoAdd)
+		itemStore.clearSearch()
+	} else if (filteredItems.value.length === 0 || isScannerInput) {
+		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+
+		// If scanner mode is enabled, clear search immediately for next scan
+		if (shouldAutoAdd) {
+			itemStore.clearSearch()
+		}
+	} else {
+		if (shouldAutoAdd) {
+			// In scanner mode, don't show manual selection - just notify
+			showWarning(`Multiple Items Found: ${filteredItems.value.length} items match barcode. Please refine search.`)
+		} else {
+			showWarning(`Multiple Items Found: ${filteredItems.value.length} items match. Please select one.`)
+		}
+	}
+}
+
+function toggleBarcodeScanner() {
+	scannerEnabled.value = !scannerEnabled.value
+
+	// Disable auto-add when scanner is disabled
+	if (!scannerEnabled.value) {
+		autoAddEnabled.value = false
+	}
+
+	// Focus on search input when enabling scanner
+	if (scannerEnabled.value) {
+		const input = searchInputRef.value || document.getElementById("item-search")
+		if (input) {
+			input.focus()
+		}
+	}
+}
+
+function toggleAutoAdd() {
+	// Auto-add works independently - no need for scanner mode
+	autoAddEnabled.value = !autoAddEnabled.value
+
+	// Auto-enable scanner mode when auto-add is enabled
+	if (autoAddEnabled.value && !scannerEnabled.value) {
+		scannerEnabled.value = true
+	}
+
+	// Clear any pending timer when toggling off
+	if (!autoAddEnabled.value && autoSearchTimer.value) {
+		clearTimeout(autoSearchTimer.value)
+		autoSearchTimer.value = null
+	}
+
+	if (autoAddEnabled.value) {
+		// Focus on search input
+		const input = searchInputRef.value || document.getElementById("item-search")
+		if (input) {
+			input.focus()
+		}
+	}
 }
 
 function formatCurrency(amount) {
 	return formatCurrencyUtil(Number.parseFloat(amount || 0), props.currency)
-}
-
-// Show warehouse availability dialog
-function showWarehouseAvailability(item) {
-	warehouseDialogItem.value = {
-		itemCode: item.item_code,
-		itemName: item.item_name,
-		uom: item.uom || item.stock_uom || 'Nos',
-		company: settingsStore.company
-	}
-	showWarehouseDialog.value = true
 }
 
 // Expose methods for parent component
@@ -1126,7 +1155,6 @@ defineExpose({
 	loadItems: () => itemStore.loadAllItems(props.posProfile),
 	loadItemGroups: () => itemStore.loadItemGroups(),
 	loadMoreItems: () => itemStore.loadMoreItems(),
-	focusSearchInput,
 })
 
 // Watch for view mode changes and rebind scroll listeners
@@ -1164,28 +1192,22 @@ function setViewMode(mode) {
 	userManuallySetView.value = true
 }
 
-// Pagination functions — each page fetches fresh data from server
+// Pagination functions
 function goToPage(page) {
-	if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
-		skipPageReset.value = true
+	if (page >= 1 && page <= totalPages.value) {
 		currentPage.value = page
-		itemStore.fetchPage(page)
 	}
 }
 
 function nextPage() {
 	if (currentPage.value < totalPages.value) {
-		skipPageReset.value = true
 		currentPage.value++
-		itemStore.fetchPage(currentPage.value)
 	}
 }
 
 function previousPage() {
 	if (currentPage.value > 1) {
-		skipPageReset.value = true
 		currentPage.value--
-		itemStore.fetchPage(currentPage.value)
 	}
 }
 
@@ -1257,7 +1279,7 @@ function getSortIconState(field) {
 function handleClickOutside(event) {
 	if (showSortDropdown.value) {
 		const dropdown = event.target.closest('.relative')
-		if (!dropdown || !dropdown.querySelector('button[data-sort-button]')?.contains(event.target)) {
+		if (!dropdown || !dropdown.querySelector('button[aria-label="Sort items"]')?.contains(event.target)) {
 			showSortDropdown.value = false
 		}
 	}

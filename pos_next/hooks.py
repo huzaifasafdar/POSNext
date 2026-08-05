@@ -224,6 +224,9 @@ doc_events = {
 		"on_cancel": "pos_next.realtime_events.emit_stock_update_event",
 		"after_insert": "pos_next.realtime_events.emit_invoice_created_event"
 	},
+	"Purchase Invoice": {
+		"validate": "pos_next.api.sales_invoice_hooks.purchase_invoice_validate"
+	},
 	"POS Profile": {
 		"on_update": "pos_next.realtime_events.emit_pos_profile_updated_event"
 	},
