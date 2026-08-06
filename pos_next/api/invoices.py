@@ -653,7 +653,12 @@ def update_invoice(data):
 
         return invoice_doc.as_dict()
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Update Invoice Error")
+        # Log the payload separately from the traceback: Frappe's variable dump
+        # truncates long values, which loses the item list needed to recover the sale.
+        frappe.log_error(
+            message=f"PAYLOAD:\n{frappe.as_json(data)}\n\nTRACEBACK:\n{frappe.get_traceback()}",
+            title="Update Invoice Error",
+        )
         raise
 
 
