@@ -525,7 +525,7 @@ function printViaIframe(printUrl) {
  * @param {Array} invoiceData.payments - Payment records
  * @param {number} invoiceData.grand_total - Invoice total amount
  */
-function printInvoiceCustom(invoiceData) {
+export function printInvoiceCustom(invoiceData) {
 	// Open print window with receipt size dimensions (80mm ≈ 302px at 96 DPI)
 	const printWindow = window.open("", "_blank", "width=350,height=600")
 
