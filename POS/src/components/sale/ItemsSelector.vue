@@ -1151,10 +1151,26 @@ function formatCurrency(amount) {
 }
 
 // Expose methods for parent component
+// Enable the barcode scanner and focus the search input, ready for the next scan.
+// Unlike toggleBarcodeScanner() this is idempotent — calling it when the scanner is
+// already on keeps it on, so callers (e.g. post-checkout) never accidentally
+// disable it for the next sale.
+function activateBarcodeScanner() {
+	scannerEnabled.value = true
+
+	nextTick(() => {
+		const input = searchInputRef.value || document.getElementById("item-search")
+		if (input) {
+			input.focus()
+		}
+	})
+}
+
 defineExpose({
 	loadItems: () => itemStore.loadAllItems(props.posProfile),
 	loadItemGroups: () => itemStore.loadItemGroups(),
 	loadMoreItems: () => itemStore.loadMoreItems(),
+	activateBarcodeScanner,
 })
 
 // Watch for view mode changes and rebind scroll listeners

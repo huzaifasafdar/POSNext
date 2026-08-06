@@ -1634,6 +1634,10 @@ async function handlePaymentCompleted(paymentData) {
 				stockStore.refresh(soldItemCodes, shiftStore.profileWarehouse)
 			}, 0)
 		}
+
+		// Checkout finished (online or offline): re-arm the barcode scanner and focus
+		// the search box so the cashier can scan straight into the next sale.
+		itemsSelectorRef.value?.activateBarcodeScanner()
 	} catch (error) {
 		log.error("Error submitting invoice:", error)
 		uiStore.showPaymentDialog = false
