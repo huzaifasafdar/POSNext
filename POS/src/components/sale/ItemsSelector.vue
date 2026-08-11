@@ -988,7 +988,8 @@ function handleKeyDown(event) {
 // Handle search input with instant reactivity
 function handleSearchInput(event) {
 	const value = event.target.value
-	itemStore.setSearchTerm(value)
+	const isPaste = event.inputType === "insertFromPaste"
+	itemStore.setSearchTerm(value, { immediate: isPaste })
 
 	// Clear any existing timer
 	if (autoSearchTimer.value) {

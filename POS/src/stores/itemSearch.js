@@ -122,6 +122,8 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 
 	// Search debounce timer
 	let searchDebounceTimer = null
+	let searchRequestVersion = 0
+	let itemGroupRequestVersion = 0
 
 	// Real-time POS Profile update handler
 	let posProfileUpdateCleanup = null
@@ -1503,10 +1505,18 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 		}
 	}
 
-	async function searchItems(term) {
+	async function searchItems(term, { immediate = false } = {}) {
+		const requestVersion = ++searchRequestVersion
+		const requestedGroup = selectedItemGroup.value
+		const isCurrentSearch = () =>
+			requestVersion === searchRequestVersion &&
+			requestedGroup === selectedItemGroup.value &&
+			term === searchTerm.value
+
 		// Clear previous debounce timer
 		if (searchDebounceTimer) {
 			clearTimeout(searchDebounceTimer)
+			searchDebounceTimer = null
 		}
 
 		// If search term is empty, clear search results
@@ -1519,6 +1529,11 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 		// Debounce search - wait 300ms after user stops typing
 		return new Promise((resolve) => {
 			searchDebounceTimer = setTimeout(async () => {
+				searchDebounceTimer = null
+				if (!isCurrentSearch()) {
+					resolve([])
+					return
+				}
 				searching.value = true
 
 				// Get search limit once for this search operation
@@ -1533,7 +1548,7 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 					log.debug(`Searching cache for: "${term}"`)
 					const cached = await offlineWorker.searchCachedItems(term, searchLimit)
 
-					if (cached && cached.length > 0) {
+					if (cached && cached.length > 0 && isCurrentSearch()) {
 						// Show cached results immediately (instant!)
 						setSearchResults(cached)
 						searching.value = false
@@ -1542,18 +1557,26 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 						// Resolve with cached results
 						resolve(cached)
 					}
+					if (!isCurrentSearch()) {
+						resolve([])
+						return
+					}
 
 					// Now search server in background for fresh results
 					log.debug(`Searching server for: "${term}"`)
 					const response = await call("pos_next.api.items.get_items", {
 						pos_profile: posProfile.value,
 						search_term: term,
-						item_group: selectedItemGroup.value,
+						item_group: requestedGroup,
 						start: 0,
 						limit: searchLimit, // Dynamically adjusted based on device performance
 						show_variants_as_items: getShowVariantsFlag(),
 					})
 					const serverResults = response?.message || response || []
+					if (!isCurrentSearch()) {
+						resolve([])
+						return
+					}
 
 					if (serverResults.length > 0) {
 						// Update with fresh server results
@@ -1574,11 +1597,19 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 					}
 				} catch (error) {
 					log.error("Error searching items", error)
+					if (!isCurrentSearch()) {
+						resolve([])
+						return
+					}
 
 					// If we haven't shown cache results yet, try cache as fallback
 					if (!searchResults.value || searchResults.value.length === 0) {
 						try {
 							const cached = await offlineWorker.searchCachedItems(term, searchLimit)
+							if (!isCurrentSearch()) {
+								resolve([])
+								return
+							}
 							setSearchResults(cached || [])
 							resolve(cached || [])
 							log.info(`Fallback: found ${cached?.length || 0} items in cache`)
@@ -1589,9 +1620,11 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 						}
 					}
 				} finally {
-					searching.value = false
+					if (requestVersion === searchRequestVersion) {
+						searching.value = false
+					}
 				}
-			}, performanceConfig.get("searchDebounce")) // Reactive: auto-adjusted 500ms/300ms/150ms based on device
+			}, immediate ? 0 : performanceConfig.get("searchDebounce")) // Group switches should not pay the typing debounce
 		})
 	}
 
@@ -1639,20 +1672,26 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 		}
 	}
 
-	function setSearchTerm(term) {
+	function setSearchTerm(term, { immediate = false } = {}) {
 		searchTerm.value = term
 
 		// Trigger server-side search when term is entered
 		if (term && term.trim().length > 0) {
-			searchItems(term)
+			searchItems(term, { immediate })
 		} else {
 			// Clear search results when term is cleared
+			searchRequestVersion += 1
+			if (searchDebounceTimer) {
+				clearTimeout(searchDebounceTimer)
+				searchDebounceTimer = null
+			}
 			setSearchResults([])
 			searching.value = false
 		}
 	}
 
 	function clearSearch() {
+		searchRequestVersion += 1
 		searchTerm.value = ""
 		setSearchResults([])
 		searching.value = false
@@ -1695,6 +1734,8 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 	function cleanup() {
 		// Stop background sync when store is destroyed
 		stopBackgroundCacheSync()
+		searchRequestVersion += 1
+		itemGroupRequestVersion += 1
 
 		// Clear timers
 		if (searchDebounceTimer) {
@@ -1710,8 +1751,19 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 	}
 
 	async function setSelectedItemGroup(group) {
+		const requestVersion = ++itemGroupRequestVersion
 		selectedItemGroup.value = group
 		clearBaseCache()
+
+		// When a search is active, fetch the searched group directly. Previously
+		// this first downloaded an unsearched page and count, then repeated the
+		// request with the search term, making category tabs appear frozen.
+		const activeSearchTerm = searchTerm.value?.trim()
+		if (activeSearchTerm) {
+			loading.value = false
+			await searchItems(searchTerm.value, { immediate: true })
+			return
+		}
 
 		// LARGE CATALOG OPTIMIZATION: Fetch items from server when group changes
 		// Client-side filtering doesn't work for 65K+ items
@@ -1746,6 +1798,8 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 							items = cached || []
 							totalCount = stats?.totalServerItems || stats?.items || items.length
 						}
+
+						if (requestVersion !== itemGroupRequestVersion) return
 
 						if (items.length > 0) {
 							replaceAllItems(items)
@@ -1808,6 +1862,7 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 
 				// Get total count for pagination
 				const countResult = await countPromise
+				if (requestVersion !== itemGroupRequestVersion) return
 				totalServerItems.value = countResult?.message ?? countResult ?? items.length
 
 				if (items.length > 0) {
@@ -1833,6 +1888,7 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 				}
 			} catch (error) {
 				log.error(`Failed to load items for group ${group || 'All Items'}`, error)
+				if (requestVersion !== itemGroupRequestVersion) return
 
 				// Network error — try cache as fallback
 				try {
@@ -1863,7 +1919,9 @@ export const useItemSearchStore = defineStore("itemSearch", () => {
 					log.warn("Cache fallback after network error failed:", cacheErr.message)
 				}
 			} finally {
-				loading.value = false
+				if (requestVersion === itemGroupRequestVersion) {
+					loading.value = false
+				}
 			}
 		}
 

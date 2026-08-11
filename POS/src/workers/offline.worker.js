@@ -522,8 +522,9 @@ async function searchCachedItems(searchTerm = "", limit = 50, offset = 0) {
 		const term = searchTerm.toLowerCase().trim()
 		const searchWords = term.split(/\s+/).filter(Boolean)
 
-		// Optimize: Use indexes for single-word searches
-		if (searchWords.length === 1) {
+		// Use indexes first for both typed and pasted values. A pasted full item
+		// name is usually multi-word but can still use the item_name prefix index.
+		{
 			// Try barcode index first (most specific)
 			const barcodeResults = await db.table("items")
 				.where("barcodes")
