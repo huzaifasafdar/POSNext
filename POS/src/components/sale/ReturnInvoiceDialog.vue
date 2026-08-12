@@ -321,6 +321,7 @@ const { showSuccess, showError, showWarning } = useToast()
 const props = defineProps({
 	modelValue: Boolean,
 	posProfile: String,
+	posOpeningShift: String,
 })
 
 const emit = defineEmits(["update:modelValue", "return-created"])
@@ -459,6 +460,7 @@ const createReturnResource = createResource({
 		const invoiceData = {
 			doctype: "Sales Invoice",
 			pos_profile: props.posProfile,
+			posa_pos_opening_shift: props.posOpeningShift,
 			customer: originalInvoice.value.customer,
 			company: originalInvoice.value.company,
 			is_return: 1,
@@ -567,7 +569,11 @@ const returnTotal = computed(() => {
 })
 
 const canCreateReturn = computed(() => {
-	return selectedItems.value.length > 0 && refundPaymentMethod.value !== ""
+	return (
+		Boolean(props.posOpeningShift) &&
+		selectedItems.value.length > 0 &&
+		refundPaymentMethod.value !== ""
+	)
 })
 
 
@@ -707,7 +713,14 @@ function decrementQty(item) {
 }
 
 async function handleCreateReturn() {
-	if (!canCreateReturn.value || isSubmitting.value) return
+	if (isSubmitting.value) return
+
+	if (!props.posOpeningShift) {
+		showWarning("Please open a POS shift before creating a return")
+		return
+	}
+
+	if (!canCreateReturn.value) return
 
 	// Validate payment method
 	if (!refundPaymentMethod.value) {

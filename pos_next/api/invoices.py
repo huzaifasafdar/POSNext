@@ -212,6 +212,27 @@ def _restore_selected_payments(invoice_doc, selected_payments):
     invoice_doc.base_paid_amount = flt(sum(p.base_amount or 0 for p in invoice_doc.payments))
 
 
+def _validate_pos_return_shift(invoice):
+    """Require POS returns to belong to the open shift that issued the refund."""
+    if not invoice.get("is_return") or not invoice.get("is_pos") or not invoice.get("pos_profile"):
+        return
+
+    opening_shift = invoice.get("posa_pos_opening_shift")
+    if not opening_shift:
+        frappe.throw(_("Open a POS shift before creating a return invoice."))
+
+    shift = frappe.db.get_value(
+        "POS Opening Shift",
+        opening_shift,
+        ["status", "pos_profile"],
+        as_dict=True,
+    )
+    if not shift or shift.status != "Open":
+        frappe.throw(_("The selected POS shift is not open."))
+    if shift.pos_profile != invoice.get("pos_profile"):
+        frappe.throw(_("The selected POS shift does not belong to this POS Profile."))
+
+
 # ==========================================
 # Stock Validation Functions
 # ==========================================
@@ -432,6 +453,7 @@ def update_invoice(data):
     """Create or update invoice draft (Step 1)."""
     try:
         data = json.loads(data) if isinstance(data, str) else data
+        _validate_pos_return_shift(data)
 
         pos_profile = data.get("pos_profile")
         doctype = "Sales Invoice"
@@ -700,6 +722,8 @@ def submit_invoice(invoice=None, data=None):
         if isinstance(invoice, str):
             invoice = json.loads(invoice)
 
+        _validate_pos_return_shift(invoice)
+
         pos_profile = invoice.get("pos_profile")
         doctype = "Sales Invoice"
 
@@ -716,6 +740,11 @@ def submit_invoice(invoice=None, data=None):
             invoice_doc.update(invoice)
 
         _restore_selected_payments(invoice_doc, selected_payments)
+
+        # Existing drafts can receive their final payment rows only at submit time.
+        # Recalculate after restoring those rows so ERPNext records cash change and
+        # does not treat the tendered denomination as money kept in the drawer.
+        invoice_doc.calculate_taxes_and_totals()
 
         # Ensure update_stock is set
         invoice_doc.update_stock = 1

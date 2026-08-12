@@ -330,6 +330,7 @@
 		<ReturnInvoiceDialog
 			v-model="uiStore.showReturnDialog"
 			:pos-profile="shiftStore.profileName"
+			:pos-opening-shift="shiftStore.currentShift?.name"
 			@return-created="handleReturnCreated"
 		/>
 
