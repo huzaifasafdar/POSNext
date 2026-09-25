@@ -1,5 +1,11 @@
 let audioContext = null
 let lastUnknownItemAlertAt = 0
+let unknownItemAudioBuffer = null
+let unknownItemAudioLoadPromise = null
+let unknownItemAudioLoadFailed = false
+
+// Change only this line to test other ERPNext/Frappe system sounds.
+const UNKNOWN_ITEM_ALERT_URL = "/assets/frappe/sounds/error.mp3"
 
 function getAudioContext() {
 	if (typeof window === "undefined") {
@@ -18,25 +24,69 @@ function getAudioContext() {
 	return audioContext
 }
 
-function playDangerAlert(context, startTime, duration = 1.35) {
-	const buzzer = context.createOscillator()
-	const masterGain = context.createGain()
+async function getUnknownItemAudioBuffer(context) {
+	if (unknownItemAudioBuffer) {
+		return unknownItemAudioBuffer
+	}
 
-	buzzer.type = "sawtooth"
-	buzzer.frequency.setValueAtTime(1800, startTime)
+	if (unknownItemAudioLoadFailed) {
+		return null
+	}
 
-	masterGain.gain.setValueAtTime(0.0001, startTime)
-	masterGain.gain.exponentialRampToValueAtTime(8, startTime + 0.01)
-	masterGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration)
+	if (!unknownItemAudioLoadPromise) {
+		unknownItemAudioLoadPromise = fetch(UNKNOWN_ITEM_ALERT_URL)
+			.then((response) => {
+				if (!response.ok) {
+					throw new Error(`Alert sound not found: ${response.status}`)
+				}
+				return response.arrayBuffer()
+			})
+			.then((audioData) => context.decodeAudioData(audioData))
+			.then((buffer) => {
+				unknownItemAudioBuffer = buffer
+				return buffer
+			})
+			.catch((error) => {
+				unknownItemAudioLoadPromise = null
+				unknownItemAudioLoadFailed = true
+				console.warn("Unable to load unknown item alert sound", error)
+				return null
+			})
+	}
 
-	buzzer.connect(masterGain)
-	masterGain.connect(context.destination)
-
-	buzzer.start(startTime)
-	buzzer.stop(startTime + duration + 0.02)
+	return unknownItemAudioLoadPromise
 }
 
-export function playUnknownItemAlert() {
+function playAudioFileAlert(context, startTime, buffer) {
+	const source = context.createBufferSource()
+	const gain = context.createGain()
+
+	source.buffer = buffer
+	gain.gain.setValueAtTime(5, startTime)
+
+	source.connect(gain)
+	gain.connect(context.destination)
+	source.start(startTime)
+}
+
+function playFallbackAlert(context, startTime) {
+	const buzzer = context.createOscillator()
+	const gain = context.createGain()
+
+	buzzer.type = "square"
+	buzzer.frequency.setValueAtTime(1200, startTime)
+
+	gain.gain.setValueAtTime(0.0001, startTime)
+	gain.gain.exponentialRampToValueAtTime(3.5, startTime + 0.01)
+	gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.5)
+
+	buzzer.connect(gain)
+	gain.connect(context.destination)
+	buzzer.start(startTime)
+	buzzer.stop(startTime + 0.52)
+}
+
+export async function playUnknownItemAlert() {
 	const now = Date.now()
 	if (now - lastUnknownItemAlertAt < 250) {
 		return
@@ -50,11 +100,17 @@ export function playUnknownItemAlert() {
 		}
 
 		if (context.state === "suspended") {
-			context.resume()
+			await context.resume()
 		}
 
 		const start = context.currentTime + 0.01
-		playDangerAlert(context, start)
+		const buffer = await getUnknownItemAudioBuffer(context)
+
+		if (buffer) {
+			playAudioFileAlert(context, start, buffer)
+		} else {
+			playFallbackAlert(context, start)
+		}
 	} catch (error) {
 		console.warn("Unable to play unknown item alert", error)
 	}
