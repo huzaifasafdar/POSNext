@@ -5,7 +5,7 @@ let unknownItemAudioLoadPromise = null
 let unknownItemAudioLoadFailed = false
 
 // Change only this line to test other ERPNext/Frappe system sounds.
-const UNKNOWN_ITEM_ALERT_URL = "/assets/frappe/sounds/error.mp3"
+const UNKNOWN_ITEM_ALERT_URL = "/assets/pos_next/pos/sounds/scan-alert.mp3?v=2"
 
 function getAudioContext() {
 	if (typeof window === "undefined") {
