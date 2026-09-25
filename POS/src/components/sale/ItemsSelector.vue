@@ -227,6 +227,21 @@
 			</div>
 		</div>
 
+		<div
+			v-if="missingScanBarcode"
+			class="px-2 sm:px-3 py-2 bg-red-50 border-b border-red-300 text-red-800"
+			role="alert"
+			aria-live="assertive"
+		>
+			<div class="flex items-center gap-2 text-xs sm:text-sm font-semibold min-w-0">
+				<svg class="w-4 h-4 flex-shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+				</svg>
+				<span class="flex-shrink-0">Item not in system</span>
+				<span class="truncate font-mono text-[11px] sm:text-xs text-red-700">{{ missingScanBarcode }}</span>
+			</div>
+		</div>
+
 		<!-- Initial Loading State - Only for first load -->
 		<div v-if="loading && !filteredItems" class="flex-1 flex items-center justify-center p-3">
 			<div class="text-center py-8">
@@ -658,6 +673,7 @@ import { usePOSSettingsStore } from "@/stores/posSettings"
 import { useStock } from "@/composables/useStock"
 import { formatCurrency as formatCurrencyUtil } from "@/utils/currency"
 import { useToast } from "@/composables/useToast"
+import { playUnknownItemAlert } from "@/utils/scanAlerts"
 import { storeToRefs } from "pinia"
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import {
@@ -717,6 +733,8 @@ const autoSearchTimer = ref(null) // Timer for auto-search when typing stops
 const lastAutoSwitchCount = ref(0)
 const lastFilterSignature = ref("")
 const showSortDropdown = ref(false) // Sort dropdown visibility
+const missingScanBarcode = ref("")
+const missingScanAlertTimer = ref(null)
 
 // Infinite scroll refs
 const gridScrollContainer = ref(null)
@@ -934,6 +952,11 @@ onUnmounted(() => {
 
 	// Remove click outside listener for sort dropdown
 	document.removeEventListener('click', handleClickOutside)
+
+	if (missingScanAlertTimer.value) {
+		clearTimeout(missingScanAlertTimer.value)
+		missingScanAlertTimer.value = null
+	}
 })
 
 // Handle keydown for barcode scanner detection
@@ -1064,6 +1087,7 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 
 		if (item) {
 			// Item found by barcode - add to cart immediately with auto-add flag
+			clearMissingScanAlert()
 			emit("item-selected", item, shouldAutoAdd)
 			itemStore.clearSearch()
 			return
@@ -1074,7 +1098,7 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 		// risks using stale results from the previous scan (the 300ms debounce
 		// may have fired during the slow production API call and populated
 		// filteredItems with the previous item, causing qty to increment).
-		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+		notifyItemNotFound(barcode)
 		if (shouldAutoAdd) {
 			itemStore.clearSearch()
 		}
@@ -1087,10 +1111,11 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 	// a previously-scanned item to get its quantity bumped. Skip the fallback
 	// and treat the API miss as definitive "not found".
 	if (!isScannerInput && filteredItems.value.length === 1) {
+		clearMissingScanAlert()
 		emit("item-selected", filteredItems.value[0], shouldAutoAdd)
 		itemStore.clearSearch()
 	} else if (filteredItems.value.length === 0 || isScannerInput) {
-		showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+		notifyItemNotFound(barcode)
 
 		// If scanner mode is enabled, clear search immediately for next scan
 		if (shouldAutoAdd) {
@@ -1103,6 +1128,30 @@ async function handleBarcodeSearch(forceAutoAdd = false) {
 		} else {
 			showWarning(`Multiple Items Found: ${filteredItems.value.length} items match. Please select one.`)
 		}
+	}
+}
+
+function notifyItemNotFound(barcode) {
+	playUnknownItemAlert()
+	missingScanBarcode.value = barcode
+	showWarning(`Item Not Found: No item found with barcode: ${barcode}`)
+
+	if (missingScanAlertTimer.value) {
+		clearTimeout(missingScanAlertTimer.value)
+	}
+
+	missingScanAlertTimer.value = setTimeout(() => {
+		missingScanBarcode.value = ""
+		missingScanAlertTimer.value = null
+	}, 4500)
+}
+
+function clearMissingScanAlert() {
+	missingScanBarcode.value = ""
+
+	if (missingScanAlertTimer.value) {
+		clearTimeout(missingScanAlertTimer.value)
+		missingScanAlertTimer.value = null
 	}
 }
 
