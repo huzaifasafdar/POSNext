@@ -19,6 +19,65 @@ def validate_item(doc, method):
 		if not doc.get("custom_company"):
 			doc.custom_company = ""
 
+	ensure_item_code_barcode(doc)
+
+
+def ensure_item_code_barcode(doc):
+	"""Allow core purchase/sales barcode scan fields to resolve the item code."""
+	barcode = (doc.get("item_code") or doc.get("name") or "").strip()
+	if not barcode:
+		return
+
+	for row in doc.get("barcodes") or []:
+		if row.get("barcode") == barcode:
+			if doc.get("stock_uom") and not row.get("uom"):
+				row.uom = doc.stock_uom
+			return
+
+	existing_parent = frappe.db.get_value("Item Barcode", {"barcode": barcode}, "parent")
+	if existing_parent:
+		if existing_parent != doc.name:
+			frappe.log_error(
+				title="POS Next Item Barcode Sync Skipped",
+				message=(
+					f"Could not add barcode {barcode} to item {doc.name}; "
+					f"it already belongs to item {existing_parent}."
+				),
+			)
+		return
+
+	doc.append("barcodes", {
+		"barcode": barcode,
+		"uom": doc.get("stock_uom"),
+	})
+
+
+def repair_item_purchase_lookup_data(item_code=None):
+	"""Backfill item-code barcode rows for existing items."""
+	filters = {"disabled": 0}
+	if item_code:
+		filters["name"] = item_code
+
+	updated_items = 0
+
+	items = frappe.get_all(
+		"Item",
+		filters=filters,
+		fields=["name"],
+		limit=1 if item_code else 0,
+	)
+
+	for row in items:
+		item_doc = frappe.get_doc("Item", row.name)
+		before = len(item_doc.get("barcodes") or [])
+		ensure_item_code_barcode(item_doc)
+		if len(item_doc.get("barcodes") or []) != before:
+			item_doc.save(ignore_permissions=True)
+			updated_items += 1
+
+	frappe.db.commit()
+	return {"updated_items": updated_items}
+
 
 @frappe.whitelist()
 def item_query(doctype, txt, searchfield, start, page_len, filters):
